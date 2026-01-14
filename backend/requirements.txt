@@ -1,0 +1,26 @@
+# Flask and extensions
+flask==3.0.0
+flask-sqlalchemy==3.1.1
+flask-migrate==4.0.5
+flask-cors==4.0.0
+flask-socketio==5.3.6
+
+# Database
+psycopg2-binary==2.9.9
+SQLAlchemy==2.0.23
+
+# Task queue
+celery==5.3.4
+redis==5.0.1
+
+# Utilities
+python-dotenv==1.0.0
+marshmallow==3.20.1
+email-validator==2.1.0
+gunicorn==21.2.0
+eventlet==0.34.2
+
+# Security
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt==4.1.1
