@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { SecurityEvent, AlertRule, DashboardStats, SiteSummary } from './types'
+import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -82,5 +82,50 @@ export async function deleteAlertRule(id: string): Promise<void> {
 
 export async function toggleAlertRule(id: string): Promise<AlertRule> {
   const { data } = await api.post(`/alerts/rules/${id}/toggle`)
+  return data
+}
+
+// Endpoints
+export async function fetchEndpoints(params?: {
+  status?: string
+  limit?: number
+}): Promise<{ endpoints: Endpoint[]; total: number }> {
+  const { data } = await api.get('/endpoints', { params })
+  return data
+}
+
+export async function fetchEndpoint(id: string): Promise<Endpoint> {
+  const { data } = await api.get(`/endpoints/${id}`)
+  return data
+}
+
+// Event Comments
+export async function fetchEventComments(eventId: string): Promise<{ comments: AlertComment[] }> {
+  const { data } = await api.get(`/events/${eventId}/comments`)
+  return data
+}
+
+export async function addEventComment(eventId: string, content: string): Promise<AlertComment> {
+  const { data } = await api.post(`/events/${eventId}/comments`, { content })
+  return data
+}
+
+// Analysts
+export async function fetchAnalysts(): Promise<{ analysts: Analyst[] }> {
+  const { data } = await api.get('/analysts')
+  return data
+}
+
+// Dashboard with time range
+export async function fetchDashboardStatsWithRange(timeRange: string): Promise<DashboardStats> {
+  const { data } = await api.get('/dashboard/stats', { params: { time_range: timeRange } })
+  return data
+}
+
+export async function fetchDashboardTrendsWithRange(timeRange: string): Promise<{
+  hourly: Array<{ hour: string; count: number }>
+  daily: Array<{ date: string; critical: number; high: number; medium: number; low: number }>
+}> {
+  const { data } = await api.get('/dashboard/trends', { params: { time_range: timeRange } })
   return data
 }

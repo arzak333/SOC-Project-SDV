@@ -9,32 +9,66 @@ events_bp = Blueprint('events', __name__)
 @events_bp.route('/events', methods=['GET'])
 def list_events():
     """List events with filtering and pagination."""
-    # Pagination
+    # Pagination - support both 'limit' and 'per_page'
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 50, type=int)
+    limit = request.args.get('limit', type=int)
+    per_page = limit if limit else request.args.get('per_page', 50, type=int)
     per_page = min(per_page, 100)  # Max 100 per page
 
     # Build query
     query = Event.query
 
-    # Filters
+    # Filters - support comma-separated values for multiple selection
     if status := request.args.get('status'):
-        try:
-            query = query.filter(Event.status == EventStatus(status))
-        except ValueError:
-            pass
+        statuses = [s.strip() for s in status.split(',')]
+        if len(statuses) > 1:
+            valid_statuses = []
+            for s in statuses:
+                try:
+                    valid_statuses.append(EventStatus(s))
+                except ValueError:
+                    pass
+            if valid_statuses:
+                query = query.filter(Event.status.in_(valid_statuses))
+        else:
+            try:
+                query = query.filter(Event.status == EventStatus(status))
+            except ValueError:
+                pass
 
     if severity := request.args.get('severity'):
-        try:
-            query = query.filter(Event.severity == EventSeverity(severity))
-        except ValueError:
-            pass
+        severities = [s.strip() for s in severity.split(',')]
+        if len(severities) > 1:
+            valid_severities = []
+            for s in severities:
+                try:
+                    valid_severities.append(EventSeverity(s))
+                except ValueError:
+                    pass
+            if valid_severities:
+                query = query.filter(Event.severity.in_(valid_severities))
+        else:
+            try:
+                query = query.filter(Event.severity == EventSeverity(severity))
+            except ValueError:
+                pass
 
     if source := request.args.get('source'):
-        try:
-            query = query.filter(Event.source == EventSource(source))
-        except ValueError:
-            pass
+        sources = [s.strip() for s in source.split(',')]
+        if len(sources) > 1:
+            valid_sources = []
+            for s in sources:
+                try:
+                    valid_sources.append(EventSource(s))
+                except ValueError:
+                    pass
+            if valid_sources:
+                query = query.filter(Event.source.in_(valid_sources))
+        else:
+            try:
+                query = query.filter(Event.source == EventSource(source))
+            except ValueError:
+                pass
 
     if event_type := request.args.get('event_type'):
         query = query.filter(Event.event_type == event_type)
@@ -98,3 +132,47 @@ def delete_event(event_id):
     db.session.delete(event)
     db.session.commit()
     return '', 204
+
+
+# In-memory storage for comments (for demo purposes)
+# In production, this would be a database table
+_event_comments = {}
+
+
+@events_bp.route('/events/<uuid:event_id>/comments', methods=['GET'])
+def get_event_comments(event_id):
+    """Get comments for an event."""
+    # Ensure event exists
+    Event.query.get_or_404(event_id)
+
+    comments = _event_comments.get(str(event_id), [])
+    return jsonify({'comments': comments})
+
+
+@events_bp.route('/events/<uuid:event_id>/comments', methods=['POST'])
+def add_event_comment(event_id):
+    """Add a comment to an event."""
+    from datetime import datetime
+    import uuid as uuid_lib
+
+    # Ensure event exists
+    Event.query.get_or_404(event_id)
+
+    data = request.get_json()
+    if not data or not data.get('content'):
+        return jsonify({'error': 'Content is required'}), 400
+
+    comment = {
+        'id': str(uuid_lib.uuid4()),
+        'event_id': str(event_id),
+        'author': data.get('author', 'Demo User'),
+        'content': data['content'],
+        'created_at': datetime.utcnow().isoformat(),
+    }
+
+    event_id_str = str(event_id)
+    if event_id_str not in _event_comments:
+        _event_comments[event_id_str] = []
+    _event_comments[event_id_str].append(comment)
+
+    return jsonify(comment), 201

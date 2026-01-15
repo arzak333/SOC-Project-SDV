@@ -41,47 +41,50 @@ Ce projet répond au cahier des charges d'un client souhaitant centraliser la su
 | Task Queue | Celery + Redis |
 | Conteneurisation | Docker, Docker Compose |
 
-## Démarrage Rapide
+## Quick Start / Démarrage Rapide
 
-### Prérequis
+### Prerequisites / Prérequis
 
-- Docker et Docker Compose
-- Git
+- [Docker](https://www.docker.com/get-started) installed
+- [Docker Compose](https://docs.docker.com/compose/install/) installed
 
-### Installation
+### Installation (3 commands!)
 
 ```bash
-# Cloner le projet
-git clone <repository-url>
-cd "Claude SOC project"
+# 1. Clone the repository / Cloner le projet
+git clone https://github.com/YOUR_USERNAME/audiosoc.git
+cd audiosoc
 
-# Démarrer tous les services
+# 2. Start all services / Démarrer tous les services
 docker-compose up -d
 
-# Initialiser la base de données
+# 3. Initialize database (first time only) / Initialiser la BDD
 docker-compose exec backend python -c "from app import create_app, db; app = create_app(); app.app_context().push(); db.create_all()"
 ```
 
-### Accès
+### Open the Dashboard / Accéder au Dashboard
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000
-- **API Health**: http://localhost:5000/health
+- **Dashboard**: http://localhost:3000
+- **API**: http://localhost:5000
+- **Health Check**: http://localhost:5000/health
 
-### Générer des logs de test
+### Generate Test Data / Générer des données de test
 
 ```bash
-# Installation des dépendances du script
-pip install -r scripts/requirements.txt
+# Generate 50 random events / Générer 50 événements
+docker-compose exec backend python /scripts/log_generator.py --count 50
 
-# Générer des événements en continu (1 toutes les 2 secondes)
-python scripts/log_generator.py
+# Simulate an attack scenario / Simuler un scénario d'attaque
+docker-compose exec backend python /scripts/log_generator.py --attack
 
-# Générer un scénario d'attaque complet
-python scripts/log_generator.py --attack
+# Burst mode (attack simulation) / Mode burst
+docker-compose exec backend python /scripts/log_generator.py --burst
+```
 
-# Mode burst (simulation d'attaque avec pics)
-python scripts/log_generator.py --burst --interval 1
+### Stop Services / Arrêter les services
+
+```bash
+docker-compose down
 ```
 
 ## Développement Local (sans Docker)

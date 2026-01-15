@@ -1,57 +1,191 @@
-# External SoC Dashboard
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-Production-grade security operations dashboard for monitoring and responding to security events in real-time.
 
-## Goals
-- Monitor security events from multiple sources (firewall, IDS, endpoints, network)
-- Real-time alerting on suspicious patterns
-- Analyst workflow (triage, investigate, resolve)
+**AudioSOC** - External SOC (Security Operations Center) dashboard for a network of 30 audioprothésiste (hearing aid) centers in France. This is an M2 Cybersecurity Master's project at PSB Paris School of Business.
+
+### Business Context
+- Client: Network of ~30 hearing aid centers across France
+- Need: Centralized security monitoring (no internal security team)
+- Goal: Functional demo platform, documented, industrializable
 
 ## Tech Stack
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Backend**: Python Flask + PostgreSQL
-- **Real-time**: WebSockets (Socket.IO)
-- **Task Queue**: Celery + Redis
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18, TypeScript, Tailwind CSS, Recharts, Socket.IO Client |
+| Backend | Python 3.11, Flask, SQLAlchemy, Flask-SocketIO |
+| Database | PostgreSQL 15 |
+| Task Queue | Celery + Redis |
+| Containers | Docker, Docker Compose |
+
+## Commands
+
+### Start all services
+```bash
+docker-compose up -d
+```
+
+### Initialize database (first time)
+```bash
+docker-compose exec backend python -c "from app import create_app, db; app = create_app(); app.app_context().push(); db.create_all()"
+```
+
+### Generate test events
+```bash
+python scripts/log_generator.py --count 50        # Generate 50 events
+python scripts/log_generator.py --attack          # Simulate attack scenario
+python scripts/log_generator.py --burst           # Burst mode (simulates attack spikes)
+```
+
+### Check logs
+```bash
+docker-compose logs backend --tail=50
+docker-compose logs frontend --tail=50
+```
+
+### Restart after code changes
+```bash
+docker-compose restart backend                    # Backend only
+docker-compose down && docker-compose up -d       # Full restart
+```
 
 ## Architecture
+
 ```
-Log Sources → Ingestion API → PostgreSQL
-                                  ↓
-Frontend ← WebSocket ← Event Stream
-                ↓
-         Alert Engine → Notifications
+┌─────────────────────────────────────────────────────────────────┐
+│                     Frontend (React)                             │
+│  Dashboard │ Events │ Alerts │ Playbooks │ Sites                │
+│  Port: 3000                                                      │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ REST API + WebSocket
+┌──────────────────────────┴──────────────────────────────────────┐
+│                     Backend (Flask)                              │
+│  /api/events │ /api/ingest │ /api/dashboard │ /api/alerts       │
+│  Port: 5000                                                      │
+└───────┬─────────────────┬─────────────────┬─────────────────────┘
+        │                 │                 │
+   PostgreSQL          Redis           Celery
+   Port: 5432       Port: 6379      (Alert Engine)
 ```
 
-## Code Style
-- TypeScript: strict mode, explicit types
-- Python: type hints, PEP 8
-- Functions: single responsibility, max 50 lines
-- API: RESTful, consistent error responses
-- Security: validate all inputs, sanitize logs
+## Project Structure
 
-## Patterns to Follow
-✓ Use React hooks (no class components)
-✓ Separate business logic from UI
-✓ Use SQLAlchemy ORM (no raw SQL)
-✓ Async/await for all API calls
-✓ Error boundaries in React
+```
+Claude SOC project/
+├── backend/
+│   ├── app/
+│   │   ├── models/          # SQLAlchemy models (Event, AlertRule, User)
+│   │   ├── routes/          # API endpoints (events, ingest, dashboard, alerts)
+│   │   └── services/        # Business logic (alert_engine, websocket, notifications)
+│   ├── config.py            # Flask configuration
+│   ├── celery_app.py        # Celery configuration
+│   └── run.py               # Entry point
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # Reusable UI (StatCard, TopBar, Charts, etc.)
+│   │   ├── pages/           # Page components (Dashboard, Events, Alerts, etc.)
+│   │   ├── hooks/           # Custom hooks (useSocket)
+│   │   ├── api.ts           # API client functions
+│   │   └── types.ts         # TypeScript interfaces
+│   └── tailwind.config.js
+├── scripts/
+│   ├── log_generator.py     # Generates realistic security events
+│   └── init_db.py           # Database initialization
+├── docs/
+│   ├── architecture.md      # Detailed architecture
+│   └── project_status.md    # Current progress
+└── docker-compose.yml
+```
 
-## Patterns to Avoid
-✗ Don't store passwords in plain text
-✗ Don't trust user input (always validate)
-✗ Don't use eval() or exec()
-✗ Don't expose internal error details to frontend
+## API Endpoints
 
-## Security Rules
-- Never commit .env files
-- Never log sensitive data (passwords, tokens)
-- Always sanitize log inputs (prevent injection)
-- Validate event severity levels
-- Rate limit API endpoints
+### Events
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/events` | List events (supports `severity=critical,high`, `status=new,investigating`, `limit=N`) |
+| GET | `/api/events/:id` | Get single event |
+| POST | `/api/ingest` | Ingest new event |
+| PATCH | `/api/events/:id/status` | Update event status |
 
-## Known Edge Cases
-- Handle malformed log entries gracefully
-- Large log files (>100MB) need streaming
-- WebSocket reconnection on network failure
-- Alert fatigue (don't spam on repeated events)
+### Dashboard
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/dashboard/stats` | Statistics (by_severity, by_source, by_status) |
+| GET | `/api/dashboard/trends` | Hourly/daily trends |
+| GET | `/api/dashboard/sites` | Summary by site |
+
+### Alert Rules
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/alerts/rules` | List all rules |
+| POST | `/api/alerts/rules` | Create rule |
+| PATCH | `/api/alerts/rules/:id` | Update rule |
+| DELETE | `/api/alerts/rules/:id` | Delete rule |
+
+## Data Models
+
+### Event Sources (monitored systems)
+- `firewall` - Network firewalls per center
+- `ids` - Intrusion Detection Systems
+- `endpoint` - Workstations (audioprothésiste PCs)
+- `active_directory` - AD authentication
+- `email` - Email gateway (phishing, spam)
+- `application` - CRM, patient records
+- `network` - Network traffic analysis
+
+### Severity Levels
+- `critical` - Active breach, ransomware (RED)
+- `high` - Multiple failed logins, port scans (ORANGE)
+- `medium` - Unusual traffic, config changes (YELLOW)
+- `low` - Informational events (BLUE)
+
+### Event Status Flow
+```
+new → investigating → resolved
+         ↓
+    false_positive
+```
+
+## Code Patterns
+
+### Frontend
+- Use functional components with hooks (no class components)
+- Mock data fallback for demo mode (see `generateMockHourlyData()` in Dashboard.tsx)
+- Glass card styling: use `glass-card` CSS class
+- Severity badges: use `badge-critical`, `badge-high`, etc.
+
+### Backend
+- All routes return JSON with consistent structure
+- Multi-value filters supported: `?severity=critical,high`
+- WebSocket broadcasts on event ingestion
+- Sanitize raw logs before storage (prevent injection)
+
+## Known Issues / TODOs
+
+### TypeScript Warnings (non-blocking)
+- Unused imports in `Events.tsx`, `Playbooks.tsx`, `AlertsBySourceChart.tsx`
+- These are warnings only; app runs fine
+
+### Not Yet Implemented
+- [ ] JWT Authentication
+- [ ] Email/Webhook notifications (configured but not connected)
+- [ ] Real SIEM integration (Wazuh/ELK)
+- [ ] Export/reporting functionality
+
+## Environment
+
+### URLs (development)
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000
+- Health check: http://localhost:5000/health
+
+### Docker Services
+- `soc-db` - PostgreSQL
+- `soc-redis` - Redis
+- `soc-backend` - Flask API
+- `soc-frontend` - React dev server
+- `soc-celery-worker` - Celery worker
+- `soc-celery-beat` - Celery scheduler

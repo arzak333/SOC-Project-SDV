@@ -38,3 +38,6 @@ htmlcov/
 *.pem
 *.key
 secrets/
+
+# Claude Code
+.claude/

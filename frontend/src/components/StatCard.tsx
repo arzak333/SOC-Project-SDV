@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, ChevronRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 
 interface StatCardProps {
@@ -10,11 +11,32 @@ interface StatCardProps {
         value: number
         isPositive?: boolean
     }
+    onClick?: () => void
+    linkTo?: string
+    linkParams?: Record<string, string>
 }
 
-export default function StatCard({ icon, label, value, trend }: StatCardProps) {
+export default function StatCard({ icon, label, value, trend, onClick, linkTo, linkParams }: StatCardProps) {
+    const navigate = useNavigate()
+    const isClickable = onClick || linkTo
+
+    const handleClick = () => {
+        if (onClick) {
+            onClick()
+        } else if (linkTo) {
+            const params = linkParams ? `?${new URLSearchParams(linkParams).toString()}` : ''
+            navigate(`${linkTo}${params}`)
+        }
+    }
+
     return (
-        <div className="glass-card p-5">
+        <div
+            onClick={isClickable ? handleClick : undefined}
+            className={clsx(
+                'glass-card p-5 transition-all duration-200',
+                isClickable && 'cursor-pointer hover:bg-slate-700/50 hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/10 group'
+            )}
+        >
             <div className="flex items-start justify-between">
                 <div className="flex-1">
                     <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
@@ -40,8 +62,13 @@ export default function StatCard({ icon, label, value, trend }: StatCardProps) {
                         </div>
                     )}
                 </div>
-                <div className="p-3 bg-slate-700/50 rounded-lg text-slate-400">
-                    {icon}
+                <div className="flex items-center gap-2">
+                    <div className="p-3 bg-slate-700/50 rounded-lg text-slate-400">
+                        {icon}
+                    </div>
+                    {isClickable && (
+                        <ChevronRight className="w-5 h-5 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
                 </div>
             </div>
         </div>

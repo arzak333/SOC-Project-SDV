@@ -56,3 +56,55 @@ export interface SiteSummary {
   medium: number
   low: number
 }
+
+// Endpoint/Center types
+export type EndpointStatus = 'online' | 'offline' | 'degraded'
+
+export interface Endpoint {
+  id: string
+  site_id: string
+  name: string
+  location: string
+  ip_address: string
+  status: EndpointStatus
+  health: number // 0-100
+  last_seen: string
+  event_count_24h: number
+  critical_alerts: number
+  type: 'center' | 'server' | 'workstation'
+}
+
+// Comment/Note type for alerts
+export interface AlertComment {
+  id: string
+  event_id: string
+  author: string
+  content: string
+  created_at: string
+}
+
+// Timeline event for alert detail
+export interface TimelineEvent {
+  id: string
+  timestamp: string
+  action: string
+  actor: string
+  details?: string
+}
+
+// Filter types
+export interface DashboardFilters {
+  timeRange: '1h' | '6h' | '24h' | '7d' | '30d' | 'custom'
+  severity?: Severity[]
+  source?: EventSource[]
+  search?: string
+}
+
+// Analysts for assignment
+export interface Analyst {
+  id: string
+  name: string
+  email: string
+  avatar?: string
+  role: 'analyst' | 'supervisor' | 'admin'
+}
