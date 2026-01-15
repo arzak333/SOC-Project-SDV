@@ -12,6 +12,7 @@ const api = axios.create({
 export async function fetchEvents(params?: {
   page?: number
   per_page?: number
+  limit?: number
   status?: string
   severity?: string
   source?: string

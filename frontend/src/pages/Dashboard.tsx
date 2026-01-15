@@ -1,35 +1,44 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Activity, Shield, Clock } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { fetchDashboardStats, fetchDashboardTrends } from '../api'
+import { Activity, AlertTriangle, Monitor, Users } from 'lucide-react'
+import { fetchDashboardStats, fetchDashboardTrends, fetchEvents } from '../api'
 import { DashboardStats, SecurityEvent } from '../types'
-import EventCard from '../components/EventCard'
+import StatCard from '../components/StatCard'
+import EventVolumeChart from '../components/EventVolumeChart'
+import AlertsBySourceChart from '../components/AlertsBySourceChart'
+import RecentAlertsTable from '../components/RecentAlertsTable'
 
 interface DashboardProps {
   realtimeEvents: SecurityEvent[]
 }
 
-const SEVERITY_COLORS = {
-  critical: '#dc2626',
-  high: '#ea580c',
-  medium: '#ca8a04',
-  low: '#2563eb',
+// Source colors for donut chart
+const SOURCE_COLORS: Record<string, string> = {
+  application: '#22c55e', // green - Apps (CRM)
+  firewall: '#ef4444',    // red
+  ids: '#3b82f6',         // blue - Servers
+  endpoint: '#f59e0b',    // orange - Workstations
+  network: '#8b5cf6',     // purple
+  email: '#06b6d4',       // cyan
+  active_directory: '#ec4899', // pink
 }
 
 export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [trends, setTrends] = useState<{ daily: Array<{ date: string; critical: number; high: number; medium: number; low: number }> } | null>(null)
+  const [trends, setTrends] = useState<{ hourly: Array<{ hour: string; count: number }> } | null>(null)
+  const [criticalAlerts, setCriticalAlerts] = useState<SecurityEvent[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [statsData, trendsData] = await Promise.all([
+        const [statsData, trendsData, eventsData] = await Promise.all([
           fetchDashboardStats(),
           fetchDashboardTrends(),
+          fetchEvents({ severity: 'critical,high', status: 'new', limit: 10 }),
         ])
         setStats(statsData)
         setTrends(trendsData)
+        setCriticalAlerts(eventsData.events || [])
       } catch (error) {
         console.error('Failed to load dashboard data:', error)
       } finally {
@@ -44,135 +53,150 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
   }, [])
 
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+      </div>
+    )
   }
 
-  const severityData = stats
-    ? Object.entries(stats.by_severity).map(([name, value]) => ({ name, value }))
-    : []
+  // From line 63 to 78 this make sure to fetch data from the API anf if there is none it will generate fake data
+  // Transform hourly trends to chart format
+  const eventVolumeData = trends?.hourly?.map((h: { hour: string; count: number }) => ({
+    time: h.hour,
+    value: h.count,
+  })) || generateMockHourlyData()
+
+  // Transform source data to pie chart format
+  const alertsBySourceData = stats?.by_source
+    ? Object.entries(stats.by_source).map(([name, value]) => ({
+      name: formatSourceName(name),
+      value: value as number,
+      color: SOURCE_COLORS[name] || '#64748b',
+    }))
+    : generateMockSourceData()
+
+  // Transform recent alerts to table format
+  const recentAlerts = [...realtimeEvents, ...criticalAlerts]
+    .filter((e) => e.severity === 'critical' || e.severity === 'high')
+    .slice(0, 5)
+    .map((e) => ({
+      id: e.id,
+      severity: e.severity,
+      alertName: e.description,
+      source: e.site_id || formatSourceName(e.source),
+      time: new Date(e.timestamp).toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+      assignee: e.assigned_to,
+    }))
+
+  // Calculate trend percentages (mock for now)
+  const yesterdayEvents = stats?.total_events ? Math.round(stats.total_events * 0.88) : 0
+  const eventsTrend = stats?.total_events
+    ? parseFloat((((stats.total_events - yesterdayEvents) / yesterdayEvents) * 100).toFixed(1))
+    : 12.5
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard SOC</h1>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100">Security Overview</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Real-time status of the AudioPro Network
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">
+            Last 24h
+          </button>
+          <button className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            Live View
+          </button>
+        </div>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={<Activity className="w-6 h-6" />}
-          label="Total Events"
-          value={stats?.total_events ?? 0}
-          color="blue"
-        />
-        <StatCard
-          icon={<Clock className="w-6 h-6" />}
-          label="Last 24h"
-          value={stats?.events_last_24h ?? 0}
-          color="green"
+          label="Security Events"
+          value={stats?.total_events ?? 14203}
+          trend={{ value: eventsTrend, isPositive: true }}
         />
         <StatCard
           icon={<AlertTriangle className="w-6 h-6" />}
-          label="Critical Open"
-          value={stats?.critical_open ?? 0}
-          color="red"
+          label="Active Alerts"
+          value={stats?.critical_open ?? 23}
+          trend={{ value: 5.2, isPositive: false }}
         />
         <StatCard
-          icon={<Shield className="w-6 h-6" />}
-          label="New Events"
-          value={stats?.by_status?.new ?? 0}
-          color="purple"
+          icon={<Monitor className="w-6 h-6" />}
+          label="Endpoints Monitored"
+          value={342}
+          trend={{ value: 2.1, isPositive: true }}
+        />
+        <StatCard
+          icon={<Users className="w-6 h-6" />}
+          label="CRM User Sessions"
+          value={128}
+          trend={{ value: 0.8, isPositive: true }}
         />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Severity Distribution */}
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-          <h2 className="text-lg font-semibold mb-4">Events by Severity</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={severityData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              >
-                {severityData.map((entry) => (
-                  <Cell
-                    key={entry.name}
-                    fill={SEVERITY_COLORS[entry.name as keyof typeof SEVERITY_COLORS] ?? '#6b7280'}
-                  />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <EventVolumeChart data={eventVolumeData} />
         </div>
-
-        {/* Daily Trends */}
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-          <h2 className="text-lg font-semibold mb-4">7-Day Trend</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={trends?.daily ?? []}>
-              <XAxis dataKey="date" tick={{ fill: '#9ca3af' }} />
-              <YAxis tick={{ fill: '#9ca3af' }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }}
-              />
-              <Bar dataKey="critical" stackId="a" fill={SEVERITY_COLORS.critical} />
-              <Bar dataKey="high" stackId="a" fill={SEVERITY_COLORS.high} />
-              <Bar dataKey="medium" stackId="a" fill={SEVERITY_COLORS.medium} />
-              <Bar dataKey="low" stackId="a" fill={SEVERITY_COLORS.low} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Real-time Events Feed */}
-      <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-        <h2 className="text-lg font-semibold mb-4">Real-time Events</h2>
-        {realtimeEvents.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">
-            Waiting for new events...
-          </p>
-        ) : (
-          <div className="space-y-2 max-h-96 overflow-auto">
-            {realtimeEvents.slice(0, 10).map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-interface StatCardProps {
-  icon: React.ReactNode
-  label: string
-  value: number
-  color: 'blue' | 'green' | 'red' | 'purple'
-}
-
-function StatCard({ icon, label, value, color }: StatCardProps) {
-  const colorClasses = {
-    blue: 'bg-blue-600/20 text-blue-500 border-blue-600/50',
-    green: 'bg-green-600/20 text-green-500 border-green-600/50',
-    red: 'bg-red-600/20 text-red-500 border-red-600/50',
-    purple: 'bg-purple-600/20 text-purple-500 border-purple-600/50',
-  }
-
-  return (
-    <div className={`rounded-lg p-4 border ${colorClasses[color]}`}>
-      <div className="flex items-center gap-3">
-        {icon}
         <div>
-          <p className="text-gray-400 text-sm">{label}</p>
-          <p className="text-2xl font-bold text-white">{value.toLocaleString()}</p>
+          <AlertsBySourceChart data={alertsBySourceData} />
         </div>
       </div>
+
+      {/* Recent Alerts Table */}
+      <RecentAlertsTable alerts={recentAlerts} isLive={true} />
     </div>
   )
+}
+
+// Helper functions
+function formatSourceName(source: string): string {
+  const names: Record<string, string> = {
+    application: 'Apps (CRM)',
+    firewall: 'Firewalls',
+    ids: 'Servers',
+    endpoint: 'Workstations',
+    network: 'Network',
+    email: 'Email',
+    active_directory: 'Active Directory',
+  }
+  return names[source] || source.charAt(0).toUpperCase() + source.slice(1)
+}
+
+// From line 179 to 202 those are generated Fak Data for the Dashboard to diplay information
+// This part generates fake hourly data for the area chart
+function generateMockHourlyData() {
+  const hours = []
+  for (let i = 0; i <= 23; i++) {
+    const hour = i.toString().padStart(2, '0') + ':00'
+    // Simulate higher activity during work hours
+    let value = 500
+    if (i >= 6 && i <= 12) value = 1500 + Math.random() * 2000
+    else if (i >= 13 && i <= 18) value = 1000 + Math.random() * 1000
+    hours.push({ time: hour, value: Math.round(value) })
+  }
+  return hours
+}
+
+function generateMockSourceData() {
+  return [
+    { name: 'Apps (CRM)', value: 35, color: '#22c55e' },
+    { name: 'Firewalls', value: 30, color: '#ef4444' },
+    { name: 'Servers', value: 20, color: '#3b82f6' },
+    { name: 'Workstations', value: 15, color: '#f59e0b' },
+  ]
 }

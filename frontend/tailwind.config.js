@@ -10,10 +10,13 @@ export default {
         'soc': {
           'critical': '#dc2626',
           'high': '#ea580c',
-          'medium': '#ca8a04',
-          'low': '#2563eb',
+          'medium': '#eab308',
+          'low': '#3b82f6',
         }
-      }
+      },
+      fontFamily: {
+        'mono': ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
     },
   },
   plugins: [],

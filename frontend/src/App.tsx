@@ -1,10 +1,11 @@
 import { Routes, Route } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Events from './pages/Events'
 import Alerts from './pages/Alerts'
 import Sites from './pages/Sites'
+import Playbooks from './pages/Playbooks'
 import { SocketProvider } from './hooks/useSocket'
 import { SecurityEvent } from './types'
 
@@ -23,6 +24,7 @@ function App() {
           <Route path="/events" element={<Events />} />
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/sites" element={<Sites />} />
+          <Route path="/playbooks" element={<Playbooks />} />
         </Routes>
       </Layout>
     </SocketProvider>
