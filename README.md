@@ -41,50 +41,47 @@ Ce projet répond au cahier des charges d'un client souhaitant centraliser la su
 | Task Queue | Celery + Redis |
 | Conteneurisation | Docker, Docker Compose |
 
-## Quick Start / Démarrage Rapide
+## Démarrage Rapide
 
-### Prerequisites / Prérequis
+### Prérequis
 
-- [Docker](https://www.docker.com/get-started) installed
-- [Docker Compose](https://docs.docker.com/compose/install/) installed
+- Docker et Docker Compose
+- Git
 
-### Installation (3 commands!)
+### Installation
 
 ```bash
-# 1. Clone the repository / Cloner le projet
-git clone https://github.com/YOUR_USERNAME/audiosoc.git
-cd audiosoc
+# Cloner le projet
+git clone <repository-url>
+cd "Claude SOC project"
 
-# 2. Start all services / Démarrer tous les services
+# Démarrer tous les services
 docker-compose up -d
 
-# 3. Initialize database (first time only) / Initialiser la BDD
+# Initialiser la base de données
 docker-compose exec backend python -c "from app import create_app, db; app = create_app(); app.app_context().push(); db.create_all()"
 ```
 
-### Open the Dashboard / Accéder au Dashboard
+### Accès
 
-- **Dashboard**: http://localhost:3000
-- **API**: http://localhost:5000
-- **Health Check**: http://localhost:5000/health
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:5000
+- **API Health**: http://localhost:5000/health
 
-### Generate Test Data / Générer des données de test
-
-```bash
-# Generate 50 random events / Générer 50 événements
-docker-compose exec backend python /scripts/log_generator.py --count 50
-
-# Simulate an attack scenario / Simuler un scénario d'attaque
-docker-compose exec backend python /scripts/log_generator.py --attack
-
-# Burst mode (attack simulation) / Mode burst
-docker-compose exec backend python /scripts/log_generator.py --burst
-```
-
-### Stop Services / Arrêter les services
+### Générer des logs de test
 
 ```bash
-docker-compose down
+# Installation des dépendances du script
+pip install -r scripts/requirements.txt
+
+# Générer des événements en continu (1 toutes les 2 secondes)
+python scripts/log_generator.py
+
+# Générer un scénario d'attaque complet
+python scripts/log_generator.py --attack
+
+# Mode burst (simulation d'attaque avec pics)
+python scripts/log_generator.py --burst --interval 1
 ```
 
 ## Développement Local (sans Docker)
