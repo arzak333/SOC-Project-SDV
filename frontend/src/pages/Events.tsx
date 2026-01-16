@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { fetchEvents, updateEventStatus } from '../api'
-import { SecurityEvent, Severity, EventStatus, EventSource } from '../types'
+import { SecurityEvent, EventStatus } from '../types'
 import EventCard from '../components/EventCard'
 import SeverityBadge from '../components/SeverityBadge'
 import StatusBadge from '../components/StatusBadge'
+import ExportButton from '../components/ExportButton'
+import { exportEventsToCSV, exportEventsReport, exportToJSON } from '../utils/export'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -69,6 +71,26 @@ export default function Events() {
       <div className="flex-1">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Security Events</h1>
+          <ExportButton
+            onExport={(format) => {
+              const stats = {
+                total: events.length,
+                critical: events.filter((e) => e.severity === 'critical').length,
+                high: events.filter((e) => e.severity === 'high').length,
+                medium: events.filter((e) => e.severity === 'medium').length,
+                low: events.filter((e) => e.severity === 'low').length,
+              }
+              if (format === 'csv') {
+                exportEventsToCSV(events, `security-events-${new Date().toISOString().split('T')[0]}`)
+              } else if (format === 'pdf') {
+                exportEventsReport(events, stats)
+              } else if (format === 'json') {
+                exportToJSON(events, `security-events-${new Date().toISOString().split('T')[0]}`)
+              }
+            }}
+            formats={['csv', 'pdf', 'json']}
+            disabled={events.length === 0}
+          />
         </div>
 
         {/* Filters */}

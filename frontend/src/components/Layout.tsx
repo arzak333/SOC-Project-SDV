@@ -32,9 +32,15 @@ export default function Layout({ children }: LayoutProps) {
   const [currentRole, setCurrentRole] = useState<UserRole>('Analyst')
 
   return (
-    <div className="min-h-screen flex bg-slate-900">
+    <div className="min-h-screen flex transition-colors duration-300" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
       {/* Fixed Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-slate-900 border-r border-slate-700 flex flex-col z-40">
+      <aside
+        className="fixed left-0 top-0 bottom-0 w-64 border-r flex flex-col z-40 transition-colors duration-300"
+        style={{
+          backgroundColor: 'var(--color-sidebar)',
+          borderColor: 'var(--color-border)'
+        }}
+      >
         {/* Logo */}
         <div className="p-5 border-b border-slate-700">
           <Link to="/" className="flex items-center gap-3">
