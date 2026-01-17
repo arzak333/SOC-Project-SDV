@@ -56,10 +56,10 @@ git clone <repository-url>
 cd "Claude SOC project"
 
 # Démarrer tous les services
-docker-compose up -d
+docker compose up -d
 
-# Initialiser la base de données
-docker-compose exec backend python -c "from app import create_app, db; app = create_app(); app.app_context().push(); db.create_all()"
+# Initialiser la base de données et créer les utilisateurs de démo
+docker compose exec backend python -c "from app import create_app, db, init_demo_users; app = create_app(); app.app_context().push(); db.create_all(); init_demo_users()"
 ```
 
 ### Accès
@@ -68,6 +68,14 @@ docker-compose exec backend python -c "from app import create_app, db; app = cre
 - **Backend API**: http://localhost:5000
 - **API Health**: http://localhost:5000/health
 
+### Identifiants de démo
+
+| Utilisateur | Mot de passe | Rôle |
+|-------------|--------------|------|
+| admin | admin123 | Administrateur |
+| analyst | analyst123 | Analyste SOC |
+| supervisor | supervisor123 | Superviseur |
+
 ### Générer des logs de test
 
 ```bash
@@ -75,13 +83,13 @@ docker-compose exec backend python -c "from app import create_app, db; app = cre
 pip install -r scripts/requirements.txt
 
 # Générer des événements en continu (1 toutes les 2 secondes)
-python scripts/log_generator.py
+python3 scripts/log_generator.py
 
 # Générer un scénario d'attaque complet
-python scripts/log_generator.py --attack
+python3 scripts/log_generator.py --attack
 
 # Mode burst (simulation d'attaque avec pics)
-python scripts/log_generator.py --burst --interval 1
+python3 scripts/log_generator.py --burst --interval 1
 ```
 
 ## Développement Local (sans Docker)
