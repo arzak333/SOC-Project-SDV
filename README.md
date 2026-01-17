@@ -90,6 +90,12 @@ python3 scripts/log_generator.py --attack
 
 # Mode burst (simulation d'attaque avec pics)
 python3 scripts/log_generator.py --burst --interval 1
+
+# Backfill: générer des données historiques (1000 événements sur 7 jours)
+python3 scripts/log_generator.py --backfill
+
+# Backfill personnalisé (2000 événements sur 30 jours)
+python3 scripts/log_generator.py --backfill --days 30 --count 2000
 ```
 
 ## Développement Local (sans Docker)
@@ -142,7 +148,7 @@ npm run dev
 | Méthode | Endpoint | Description |
 |---------|----------|-------------|
 | GET | `/api/dashboard/stats` | Statistiques globales |
-| GET | `/api/dashboard/trends` | Tendances sur 7 jours |
+| GET | `/api/dashboard/trends?timeframe=24h` | Tendances (5m, 15m, 30m, 1h, 6h, 24h, 7d, 30d) |
 | GET | `/api/dashboard/sites` | Résumé par site |
 
 ### Alert Rules

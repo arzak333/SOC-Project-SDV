@@ -45,6 +45,8 @@ docker compose exec backend python -c "from app import create_app, db, init_demo
 python scripts/log_generator.py --count 50        # Generate 50 events
 python scripts/log_generator.py --attack          # Simulate attack scenario
 python scripts/log_generator.py --burst           # Burst mode (simulates attack spikes)
+python scripts/log_generator.py --backfill        # Backfill 1000 events over 7 days
+python scripts/log_generator.py --backfill --days 30 --count 2000  # Custom backfill
 ```
 
 ### Check logs
@@ -121,7 +123,7 @@ Claude SOC project/
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/dashboard/stats` | Statistics (by_severity, by_source, by_status) |
-| GET | `/api/dashboard/trends` | Hourly/daily trends |
+| GET | `/api/dashboard/trends?timeframe=24h` | Event trends (supports: 5m, 15m, 30m, 1h, 6h, 24h, 7d, 30d) |
 | GET | `/api/dashboard/sites` | Summary by site |
 
 ### Alert Rules
@@ -176,11 +178,17 @@ new → investigating → resolved
 - Unused imports in `Events.tsx`, `Playbooks.tsx`, `AlertsBySourceChart.tsx`
 - These are warnings only; app runs fine
 
+### Implemented Features (v1.1)
+- [x] JWT Authentication (login, register, roles: admin/analyst/supervisor)
+- [x] Dark/Light theme toggle
+- [x] Export functionality (CSV, PDF, JSON)
+- [x] Enhanced Playbooks with step execution
+- [x] Event Volume timeframes (5m, 15m, 30m, 1h, 6h, 24h, 7d, 30d)
+- [x] Historical data backfill (`--backfill` option)
+
 ### Not Yet Implemented
-- [ ] JWT Authentication
 - [ ] Email/Webhook notifications (configured but not connected)
 - [ ] Real SIEM integration (Wazuh/ELK)
-- [ ] Export/reporting functionality
 
 ## Environment
 

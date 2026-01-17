@@ -9,7 +9,7 @@ This file tracks all features implemented in the AudioSOC project.
 ### Dashboard (v1.0)
 - Real-time security event monitoring via WebSocket
 - KPI cards showing event counts by severity
-- 7-day trend visualization (hourly/daily)
+- Event Volume chart with configurable timeframes: 5m, 15m, 30m, 1h, 6h, 24h, 7d, 30d
 - Critical events list with quick access
 - Site summary overview (30 centers)
 - Auto-refresh with live updates
@@ -161,6 +161,10 @@ This file tracks all features implemented in the AudioSOC project.
 - Attack scenario simulation
 - Burst mode for spike testing
 - Multi-site event distribution
+- **Backfill mode**: Generate historical events spread across configurable time range
+  - `--backfill`: Enable backfill mode
+  - `--days N`: Number of days to backfill (default: 7)
+  - `--count N`: Number of events to generate (default: 1000)
 
 ### Docker Deployment
 - 6-service Docker Compose setup
