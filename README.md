@@ -52,8 +52,8 @@ Ce projet répond au cahier des charges d'un client souhaitant centraliser la su
 
 ```bash
 # Cloner le projet
-git clone <repository-url>
-cd "Claude SOC project"
+git clone <https://github.com/arzak333/SOC-Project-SDV.git>
+cd: "SOC-Project-SDV"
 
 # Démarrer tous les services
 docker compose up -d
