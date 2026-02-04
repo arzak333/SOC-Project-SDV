@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst } from './types'
+import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -128,5 +128,97 @@ export async function fetchDashboardTrendsWithRange(timeframe: string): Promise<
   timeframe: string
 }> {
   const { data } = await api.get('/dashboard/trends', { params: { timeframe } })
+  return data
+}
+
+// ============== PLAYBOOKS ==============
+
+export async function fetchPlaybooks(params?: {
+  status?: string
+  category?: string
+}): Promise<{ playbooks: Playbook[]; total: number }> {
+  const { data } = await api.get('/playbooks', { params })
+  return data
+}
+
+export async function fetchPlaybook(id: string): Promise<Playbook> {
+  const { data } = await api.get(`/playbooks/${id}`)
+  return data
+}
+
+export async function createPlaybook(
+  playbook: Omit<Playbook, 'id' | 'createdAt' | 'lastRun' | 'triggeredCount' | 'avgDuration' | 'status'>
+): Promise<Playbook> {
+  const { data } = await api.post('/playbooks', playbook)
+  return data
+}
+
+export async function updatePlaybook(
+  id: string,
+  updates: Partial<Playbook>
+): Promise<Playbook> {
+  const { data } = await api.patch(`/playbooks/${id}`, updates)
+  return data
+}
+
+export async function deletePlaybook(id: string): Promise<void> {
+  await api.delete(`/playbooks/${id}`)
+}
+
+export async function duplicatePlaybook(id: string): Promise<Playbook> {
+  const { data } = await api.post(`/playbooks/${id}/duplicate`)
+  return data
+}
+
+export async function togglePlaybook(id: string): Promise<Playbook> {
+  const { data } = await api.post(`/playbooks/${id}/toggle`)
+  return data
+}
+
+export async function archivePlaybook(id: string): Promise<Playbook> {
+  const { data } = await api.post(`/playbooks/${id}/archive`)
+  return data
+}
+
+// ============== PLAYBOOK EXECUTIONS ==============
+
+export async function executePlaybook(
+  playbookId: string,
+  params?: { alertId?: string; eventId?: string; startedBy?: string }
+): Promise<PlaybookExecution> {
+  const { data } = await api.post(`/playbooks/${playbookId}/execute`, params)
+  return data
+}
+
+export async function fetchExecutions(params?: {
+  status?: string
+  playbook_id?: string
+  active?: string
+}): Promise<{ executions: PlaybookExecution[]; total: number }> {
+  const { data } = await api.get('/playbook-executions', { params })
+  return data
+}
+
+export async function fetchExecution(id: string): Promise<PlaybookExecution> {
+  const { data } = await api.get(`/playbook-executions/${id}`)
+  return data
+}
+
+export async function updateExecutionStep(
+  executionId: string,
+  stepIndex: number,
+  update: { status: string; result?: string }
+): Promise<PlaybookExecution> {
+  const { data } = await api.patch(`/playbook-executions/${executionId}/steps/${stepIndex}`, update)
+  return data
+}
+
+export async function abortExecution(id: string): Promise<PlaybookExecution> {
+  const { data } = await api.post(`/playbook-executions/${id}/abort`)
+  return data
+}
+
+export async function completeExecution(id: string, result?: string): Promise<PlaybookExecution> {
+  const { data } = await api.post(`/playbook-executions/${id}/complete`, { result })
   return data
 }

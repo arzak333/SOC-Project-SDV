@@ -1,6 +1,10 @@
 from app.models.event import Event, EventStatus, EventSeverity, EventSource
 from app.models.alert_rule import AlertRule, AlertAction
 from app.models.user import User, UserRole
+from app.models.playbook import (
+    Playbook, PlaybookExecution,
+    PlaybookStatus, PlaybookTrigger, PlaybookCategory, ExecutionStatus
+)
 
 __all__ = [
     'Event',
@@ -10,5 +14,11 @@ __all__ = [
     'AlertRule',
     'AlertAction',
     'User',
-    'UserRole'
+    'UserRole',
+    'Playbook',
+    'PlaybookExecution',
+    'PlaybookStatus',
+    'PlaybookTrigger',
+    'PlaybookCategory',
+    'ExecutionStatus',
 ]

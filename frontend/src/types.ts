@@ -108,3 +108,54 @@ export interface Analyst {
   avatar?: string
   role: 'analyst' | 'supervisor' | 'admin'
 }
+
+// Playbook types
+export type PlaybookStatus = 'active' | 'draft' | 'archived'
+export type PlaybookTrigger = 'manual' | 'alert_rule' | 'scheduled'
+export type PlaybookCategory = 'incident' | 'investigation' | 'remediation' | 'compliance'
+export type PlaybookStepType = 'action' | 'condition' | 'notification' | 'manual'
+export type PlaybookStepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped'
+export type ExecutionStatus = 'in_progress' | 'completed' | 'aborted' | 'failed'
+
+export interface PlaybookStep {
+  id: string
+  order: number
+  name: string
+  type: PlaybookStepType
+  description: string
+  config: Record<string, unknown>
+  status?: PlaybookStepStatus
+  started_at?: string
+  completed_at?: string
+  result?: string
+}
+
+export interface Playbook {
+  id: string
+  name: string
+  description: string
+  status: PlaybookStatus
+  trigger: PlaybookTrigger
+  triggerConfig?: Record<string, unknown>
+  steps: PlaybookStep[]
+  lastRun?: string
+  triggeredCount: number
+  avgDuration?: string
+  createdAt: string
+  category: PlaybookCategory
+}
+
+export interface PlaybookExecution {
+  id: string
+  playbookId: string
+  playbookName?: string
+  triggeredByAlertId?: string
+  triggeredByEventId?: string
+  status: ExecutionStatus
+  startedBy: string
+  stepsData: PlaybookStep[]
+  currentStep: number
+  startedAt: string
+  completedAt?: string
+  result?: string
+}

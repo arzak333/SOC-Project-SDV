@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   BookOpen,
   Plus,
@@ -11,48 +11,39 @@ import {
   X,
   ChevronRight,
   ChevronDown,
-  AlertTriangle,
   Shield,
   Mail,
   Ban,
   Search,
   FileText,
   Users,
-  Server,
   Zap,
   Copy,
   Eye,
   Archive,
-  RotateCcw
+  RotateCcw,
+  Activity,
+  StopCircle,
+  History
 } from 'lucide-react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-
-interface PlaybookStep {
-  id: string
-  order: number
-  name: string
-  type: 'action' | 'condition' | 'notification' | 'manual'
-  description: string
-  config: Record<string, any>
-  status?: 'pending' | 'running' | 'completed' | 'failed' | 'skipped'
-}
-
-interface Playbook {
-  id: string
-  name: string
-  description: string
-  status: 'active' | 'draft' | 'archived'
-  trigger: 'manual' | 'alert_rule' | 'scheduled'
-  triggerConfig?: Record<string, any>
-  steps: PlaybookStep[]
-  lastRun?: string
-  triggeredCount: number
-  avgDuration?: string
-  createdAt: string
-  category: 'incident' | 'investigation' | 'remediation' | 'compliance'
-}
+import { Playbook, PlaybookStep, PlaybookExecution } from '../types'
+import {
+  fetchPlaybooks,
+  createPlaybook as apiCreatePlaybook,
+  updatePlaybook as apiUpdatePlaybook,
+  deletePlaybook as apiDeletePlaybook,
+  duplicatePlaybook as apiDuplicatePlaybook,
+  togglePlaybook as apiTogglePlaybook,
+  archivePlaybook as apiArchivePlaybook,
+  executePlaybook as apiExecutePlaybook,
+  fetchExecutions,
+  updateExecutionStep,
+  abortExecution as apiAbortExecution,
+  completeExecution as apiCompleteExecution,
+} from '../api'
 
 // Action types available for playbook steps
 const STEP_TYPES = [
@@ -74,89 +65,54 @@ const AVAILABLE_ACTIONS = [
   { value: 'restore_backup', label: 'Restore from Backup', icon: RotateCcw, category: 'remediation' },
 ]
 
-// Mock playbooks data
-const initialPlaybooks: Playbook[] = [
-  {
-    id: '1',
-    name: 'Ransomware Response',
-    description: 'Immediate containment and investigation steps for ransomware detection',
-    status: 'active',
-    trigger: 'alert_rule',
-    triggerConfig: { rule_name: 'Malware Alert' },
-    category: 'incident',
-    steps: [
-      { id: 's1', order: 1, name: 'Isolate Affected Host', type: 'action', description: 'Immediately isolate the infected endpoint', config: { action: 'isolate_host' }, status: 'completed' },
-      { id: 's2', order: 2, name: 'Notify SOC Team', type: 'notification', description: 'Alert the security team via email and Slack', config: { channels: ['email', 'slack'] }, status: 'completed' },
-      { id: 's3', order: 3, name: 'Collect Forensic Data', type: 'action', description: 'Gather logs and memory dumps', config: { action: 'collect_logs' }, status: 'running' },
-      { id: 's4', order: 4, name: 'Await Manager Approval', type: 'manual', description: 'Wait for security manager to approve next steps', config: {}, status: 'pending' },
-      { id: 's5', order: 5, name: 'Block Source IP', type: 'action', description: 'Block the command & control IP', config: { action: 'block_ip' }, status: 'pending' },
-    ],
-    lastRun: '2024-01-15T14:30:00Z',
-    triggeredCount: 12,
-    avgDuration: '15m',
-    createdAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '2',
-    name: 'Phishing Investigation',
-    description: 'Email analysis and user notification workflow for suspected phishing',
-    status: 'active',
-    trigger: 'alert_rule',
-    triggerConfig: { rule_name: 'Phishing Detection' },
-    category: 'investigation',
-    steps: [
-      { id: 's1', order: 1, name: 'Extract Email Headers', type: 'action', description: 'Parse and analyze email headers', config: { action: 'collect_logs' } },
-      { id: 's2', order: 2, name: 'Check URL Reputation', type: 'action', description: 'Verify URLs against threat intel', config: { action: 'scan_endpoint' } },
-      { id: 's3', order: 3, name: 'Notify User', type: 'notification', description: 'Inform the targeted user', config: { channels: ['email'] } },
-      { id: 's4', order: 4, name: 'Block Sender Domain', type: 'condition', description: 'If malicious, block the sender', config: { condition: 'is_malicious' } },
-    ],
-    lastRun: '2024-01-14T09:15:00Z',
-    triggeredCount: 45,
-    avgDuration: '8m',
-    createdAt: '2024-01-02T00:00:00Z',
-  },
-  {
-    id: '3',
-    name: 'Brute Force Response',
-    description: 'Account lockout and IP blocking for failed login attempts',
-    status: 'active',
-    trigger: 'alert_rule',
-    triggerConfig: { rule_name: 'Brute Force Detection' },
-    category: 'incident',
-    steps: [
-      { id: 's1', order: 1, name: 'Lock User Account', type: 'action', description: 'Temporarily lock the targeted account', config: { action: 'disable_account' } },
-      { id: 's2', order: 2, name: 'Block Source IP', type: 'action', description: 'Add attacker IP to blocklist', config: { action: 'block_ip' } },
-      { id: 's3', order: 3, name: 'Notify User & Admin', type: 'notification', description: 'Send security alerts', config: { channels: ['email'] } },
-    ],
-    lastRun: '2024-01-15T10:00:00Z',
-    triggeredCount: 89,
-    avgDuration: '2m',
-    createdAt: '2024-01-03T00:00:00Z',
-  },
-  {
-    id: '4',
-    name: 'Data Exfiltration Detection',
-    description: 'Network analysis for unusual outbound traffic patterns',
-    status: 'draft',
-    trigger: 'manual',
-    category: 'investigation',
-    steps: [
-      { id: 's1', order: 1, name: 'Analyze Network Flows', type: 'action', description: 'Review outbound traffic logs', config: { action: 'collect_logs' } },
-      { id: 's2', order: 2, name: 'Identify Destination', type: 'action', description: 'Trace data destination', config: { action: 'scan_endpoint' } },
-    ],
-    triggeredCount: 0,
-    createdAt: '2024-01-10T00:00:00Z',
-  },
-]
-
 export default function Playbooks() {
-  const [playbooks, setPlaybooks] = useState<Playbook[]>(initialPlaybooks)
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([])
+  const [executions, setExecutions] = useState<PlaybookExecution[]>([])
+  const [activeExecutions, setActiveExecutions] = useState<PlaybookExecution[]>([])
   const [selectedPlaybook, setSelectedPlaybook] = useState<Playbook | null>(null)
+  const [selectedExecution, setSelectedExecution] = useState<PlaybookExecution | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingPlaybook, setEditingPlaybook] = useState<Playbook | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [showHistory, setShowHistory] = useState(false)
+
+  // Load data
+  useEffect(() => {
+    loadData()
+    // Refresh active executions every 5 seconds
+    const interval = setInterval(loadActiveExecutions, 5000)
+    return () => clearInterval(interval)
+  }, [])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+      const [playbooksRes, executionsRes, activeRes] = await Promise.all([
+        fetchPlaybooks(),
+        fetchExecutions({ status: undefined }),
+        fetchExecutions({ active: 'true' }),
+      ])
+      setPlaybooks(playbooksRes.playbooks)
+      setExecutions(executionsRes.executions)
+      setActiveExecutions(activeRes.executions)
+    } catch (error) {
+      console.error('Failed to load playbooks:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadActiveExecutions() {
+    try {
+      const res = await fetchExecutions({ active: 'true' })
+      setActiveExecutions(res.executions)
+    } catch (error) {
+      console.error('Failed to load active executions:', error)
+    }
+  }
 
   // Filter playbooks
   const filteredPlaybooks = playbooks.filter(pb => {
@@ -172,75 +128,98 @@ export default function Playbooks() {
     total: playbooks.length,
     active: playbooks.filter(p => p.status === 'active').length,
     totalRuns: playbooks.reduce((sum, p) => sum + p.triggeredCount, 0),
-    draft: playbooks.filter(p => p.status === 'draft').length,
+    inProgress: activeExecutions.length,
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (!confirm('Delete this playbook?')) return
-    setPlaybooks(playbooks.filter(p => p.id !== id))
-    if (selectedPlaybook?.id === id) setSelectedPlaybook(null)
-  }
-
-  function handleDuplicate(playbook: Playbook) {
-    const newPlaybook: Playbook = {
-      ...playbook,
-      id: Date.now().toString(),
-      name: `${playbook.name} (Copy)`,
-      status: 'draft',
-      triggeredCount: 0,
-      lastRun: undefined,
-      createdAt: new Date().toISOString(),
+    try {
+      await apiDeletePlaybook(id)
+      setPlaybooks(playbooks.filter(p => p.id !== id))
+      if (selectedPlaybook?.id === id) setSelectedPlaybook(null)
+    } catch (error) {
+      console.error('Failed to delete playbook:', error)
     }
-    setPlaybooks([newPlaybook, ...playbooks])
   }
 
-  function handleToggleStatus(id: string) {
-    setPlaybooks(playbooks.map(p => {
-      if (p.id === id) {
-        const newStatus = p.status === 'active' ? 'draft' : 'active'
-        return { ...p, status: newStatus }
-      }
-      return p
-    }))
-  }
-
-  function handleArchive(id: string) {
-    setPlaybooks(playbooks.map(p => p.id === id ? { ...p, status: 'archived' as const } : p))
-  }
-
-  function handleRun(playbook: Playbook) {
-    // Simulate running a playbook
-    const updatedPlaybook = {
-      ...playbook,
-      lastRun: new Date().toISOString(),
-      triggeredCount: playbook.triggeredCount + 1,
+  async function handleDuplicate(playbook: Playbook) {
+    try {
+      const newPlaybook = await apiDuplicatePlaybook(playbook.id)
+      setPlaybooks([newPlaybook, ...playbooks])
+    } catch (error) {
+      console.error('Failed to duplicate playbook:', error)
     }
-    setPlaybooks(playbooks.map(p => p.id === playbook.id ? updatedPlaybook : p))
-    setSelectedPlaybook(updatedPlaybook)
   }
 
-  function handleCreate(data: Partial<Playbook>) {
-    const newPlaybook: Playbook = {
-      id: Date.now().toString(),
-      name: data.name || 'New Playbook',
-      description: data.description || '',
-      status: 'draft',
-      trigger: data.trigger || 'manual',
-      triggerConfig: data.triggerConfig || {},
-      category: data.category || 'incident',
-      steps: data.steps || [],
-      triggeredCount: 0,
-      createdAt: new Date().toISOString(),
+  async function handleToggleStatus(id: string) {
+    try {
+      const updated = await apiTogglePlaybook(id)
+      setPlaybooks(playbooks.map(p => p.id === id ? updated : p))
+      if (selectedPlaybook?.id === id) setSelectedPlaybook(updated)
+    } catch (error) {
+      console.error('Failed to toggle playbook:', error)
     }
-    setPlaybooks([newPlaybook, ...playbooks])
-    setShowForm(false)
   }
 
-  function handleUpdate(data: Partial<Playbook>) {
+  async function handleArchive(id: string) {
+    try {
+      const updated = await apiArchivePlaybook(id)
+      setPlaybooks(playbooks.map(p => p.id === id ? updated : p))
+      if (selectedPlaybook?.id === id) setSelectedPlaybook(updated)
+    } catch (error) {
+      console.error('Failed to archive playbook:', error)
+    }
+  }
+
+  async function handleRun(playbook: Playbook) {
+    try {
+      const execution = await apiExecutePlaybook(playbook.id, { startedBy: 'analyst' })
+      setActiveExecutions([execution, ...activeExecutions])
+      setSelectedExecution(execution)
+      // Reload playbooks to update stats
+      const res = await fetchPlaybooks()
+      setPlaybooks(res.playbooks)
+    } catch (error) {
+      console.error('Failed to run playbook:', error)
+    }
+  }
+
+  async function handleCreate(data: Partial<Playbook>) {
+    try {
+      const newPlaybook = await apiCreatePlaybook({
+        name: data.name || 'New Playbook',
+        description: data.description || '',
+        trigger: data.trigger || 'manual',
+        triggerConfig: data.triggerConfig || {},
+        category: data.category || 'incident',
+        steps: data.steps || [],
+      })
+      setPlaybooks([newPlaybook, ...playbooks])
+      setShowForm(false)
+    } catch (error) {
+      console.error('Failed to create playbook:', error)
+    }
+  }
+
+  async function handleUpdate(data: Partial<Playbook>) {
     if (!editingPlaybook) return
-    setPlaybooks(playbooks.map(p => p.id === editingPlaybook.id ? { ...p, ...data } : p))
-    setEditingPlaybook(null)
-    setShowForm(false)
+    try {
+      const updated = await apiUpdatePlaybook(editingPlaybook.id, data)
+      setPlaybooks(playbooks.map(p => p.id === editingPlaybook.id ? updated : p))
+      if (selectedPlaybook?.id === editingPlaybook.id) setSelectedPlaybook(updated)
+      setEditingPlaybook(null)
+      setShowForm(false)
+    } catch (error) {
+      console.error('Failed to update playbook:', error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+      </div>
+    )
   }
 
   return (
@@ -255,16 +234,28 @@ export default function Playbooks() {
             Automated response procedures for security incidents
           </p>
         </div>
-        <button
-          onClick={() => {
-            setEditingPlaybook(null)
-            setShowForm(true)
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          New Playbook
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className={clsx(
+              'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors',
+              showHistory ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            )}
+          >
+            <History className="w-4 h-4" />
+            History
+          </button>
+          <button
+            onClick={() => {
+              setEditingPlaybook(null)
+              setShowForm(true)
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Playbook
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -294,11 +285,11 @@ export default function Playbooks() {
         <div className="glass-card p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-yellow-600/20 rounded-lg">
-              <FileText className="w-5 h-5 text-yellow-400" />
+              <Activity className="w-5 h-5 text-yellow-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{stats.draft}</p>
-              <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Drafts</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{stats.inProgress}</p>
+              <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>In Progress</p>
             </div>
           </div>
         </div>
@@ -314,6 +305,55 @@ export default function Playbooks() {
           </div>
         </div>
       </div>
+
+      {/* Active Executions Widget */}
+      {activeExecutions.length > 0 && (
+        <div className="glass-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="w-5 h-5 text-yellow-400 animate-pulse" />
+            <h3 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+              Active Executions ({activeExecutions.length})
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {activeExecutions.map(exec => (
+              <div
+                key={exec.id}
+                onClick={() => setSelectedExecution(exec)}
+                className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-slate-700/30 transition-colors"
+                style={{ backgroundColor: 'var(--color-bg-tertiary)' }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                  <div>
+                    <p className="font-medium text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                      {exec.playbookName}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      Step {exec.currentStep + 1} of {exec.stepsData.length} • Started by {exec.startedBy}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                    {exec.startedAt && format(new Date(exec.startedAt), 'HH:mm')}
+                  </span>
+                  <ChevronRight className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Execution History */}
+      {showHistory && (
+        <ExecutionHistory
+          executions={executions}
+          onSelectExecution={setSelectedExecution}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-4">
@@ -381,10 +421,10 @@ export default function Playbooks() {
             filteredPlaybooks.map((playbook) => (
               <div
                 key={playbook.id}
-                onClick={() => setSelectedPlaybook(playbook)}
+                onClick={() => { setSelectedPlaybook(playbook); setSelectedExecution(null) }}
                 className={clsx(
                   'glass-card p-4 cursor-pointer transition-all',
-                  selectedPlaybook?.id === playbook.id && 'ring-2 ring-blue-500',
+                  selectedPlaybook?.id === playbook.id && !selectedExecution && 'ring-2 ring-blue-500',
                   playbook.status === 'archived' && 'opacity-60'
                 )}
               >
@@ -435,8 +475,33 @@ export default function Playbooks() {
           )}
         </div>
 
-        {/* Playbook Detail */}
-        {selectedPlaybook ? (
+        {/* Detail Panel */}
+        {selectedExecution ? (
+          <ExecutionDetail
+            execution={selectedExecution}
+            onUpdateStep={async (stepIndex, status) => {
+              const updated = await updateExecutionStep(selectedExecution.id, stepIndex, { status })
+              setSelectedExecution(updated)
+              if (updated.status !== 'in_progress') {
+                setActiveExecutions(activeExecutions.filter(e => e.id !== updated.id))
+                loadData()
+              }
+            }}
+            onAbort={async () => {
+              const updated = await apiAbortExecution(selectedExecution.id)
+              setSelectedExecution(updated)
+              setActiveExecutions(activeExecutions.filter(e => e.id !== updated.id))
+              loadData()
+            }}
+            onComplete={async () => {
+              const updated = await apiCompleteExecution(selectedExecution.id)
+              setSelectedExecution(updated)
+              setActiveExecutions(activeExecutions.filter(e => e.id !== updated.id))
+              loadData()
+            }}
+            onClose={() => setSelectedExecution(null)}
+          />
+        ) : selectedPlaybook ? (
           <PlaybookDetail
             playbook={selectedPlaybook}
             onEdit={() => {
@@ -511,6 +576,224 @@ function CategoryBadge({ category }: { category: Playbook['category'] }) {
   )
 }
 
+// Execution History Component
+function ExecutionHistory({
+  executions,
+  onSelectExecution,
+  onClose,
+}: {
+  executions: PlaybookExecution[]
+  onSelectExecution: (exec: PlaybookExecution) => void
+  onClose: () => void
+}) {
+  return (
+    <div className="glass-card p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <History className="w-5 h-5 text-blue-400" />
+          <h3 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+            Execution History
+          </h3>
+        </div>
+        <button onClick={onClose} className="p-1 hover:bg-slate-700/50 rounded">
+          <X className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} />
+        </button>
+      </div>
+
+      {executions.length === 0 ? (
+        <p className="text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
+          No execution history yet
+        </p>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {executions.slice(0, 20).map(exec => (
+            <div
+              key={exec.id}
+              onClick={() => onSelectExecution(exec)}
+              className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-slate-700/30 transition-colors"
+              style={{ backgroundColor: 'var(--color-bg-tertiary)' }}
+            >
+              <div className="flex items-center gap-3">
+                <ExecutionStatusIcon status={exec.status} />
+                <div>
+                  <p className="font-medium text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                    {exec.playbookName}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                    {exec.startedAt && format(new Date(exec.startedAt), 'PPp', { locale: fr })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={clsx(
+                  'text-xs px-2 py-0.5 rounded capitalize',
+                  exec.status === 'completed' && 'bg-green-600/20 text-green-400',
+                  exec.status === 'in_progress' && 'bg-yellow-600/20 text-yellow-400',
+                  exec.status === 'aborted' && 'bg-red-600/20 text-red-400',
+                  exec.status === 'failed' && 'bg-red-600/20 text-red-400'
+                )}>
+                  {exec.status.replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ExecutionStatusIcon({ status }: { status: PlaybookExecution['status'] }) {
+  if (status === 'completed') return <CheckCircle2 className="w-5 h-5 text-green-400" />
+  if (status === 'in_progress') return <Activity className="w-5 h-5 text-yellow-400 animate-pulse" />
+  if (status === 'aborted') return <StopCircle className="w-5 h-5 text-red-400" />
+  return <X className="w-5 h-5 text-red-400" />
+}
+
+// Execution Detail Component
+function ExecutionDetail({
+  execution,
+  onUpdateStep,
+  onAbort,
+  onComplete,
+  onClose,
+}: {
+  execution: PlaybookExecution
+  onUpdateStep: (stepIndex: number, status: string) => void
+  onAbort: () => void
+  onComplete: () => void
+  onClose: () => void
+}) {
+  const isActive = execution.status === 'in_progress'
+
+  return (
+    <div className="glass-card overflow-hidden">
+      {/* Header */}
+      <div className="p-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <ExecutionStatusIcon status={execution.status} />
+              <h2 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                {execution.playbookName}
+              </h2>
+              <span className={clsx(
+                'text-xs px-2 py-0.5 rounded capitalize',
+                execution.status === 'completed' && 'bg-green-600/20 text-green-400',
+                execution.status === 'in_progress' && 'bg-yellow-600/20 text-yellow-400',
+                execution.status === 'aborted' && 'bg-red-600/20 text-red-400'
+              )}>
+                {execution.status.replace('_', ' ')}
+              </span>
+            </div>
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+              Started by {execution.startedBy} at {execution.startedAt && format(new Date(execution.startedAt), 'PPp', { locale: fr })}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-slate-700/50 rounded">
+            <X className="w-5 h-5" style={{ color: 'var(--color-text-muted)' }} />
+          </button>
+        </div>
+
+        {/* Action buttons */}
+        {isActive && (
+          <div className="flex items-center gap-2 mt-4">
+            <button
+              onClick={onComplete}
+              className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Mark Complete
+            </button>
+            <button
+              onClick={onAbort}
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+            >
+              <StopCircle className="w-4 h-4" />
+              Abort
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Steps */}
+      <div className="p-4">
+        <h3 className="font-medium mb-3" style={{ color: 'var(--color-text-primary)' }}>
+          Execution Progress
+        </h3>
+        <div className="space-y-2">
+          {execution.stepsData.map((step, index) => (
+            <div key={step.id}>
+              <div
+                className="flex items-center gap-3 p-3 rounded-lg"
+                style={{ backgroundColor: 'var(--color-bg-tertiary)' }}
+              >
+                {/* Step number */}
+                <div className={clsx(
+                  'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold',
+                  step.status === 'completed' ? 'bg-green-600 text-white' :
+                  step.status === 'running' ? 'bg-blue-600 text-white animate-pulse' :
+                  step.status === 'failed' ? 'bg-red-600 text-white' :
+                  step.status === 'skipped' ? 'bg-yellow-600 text-white' :
+                  'bg-slate-600 text-slate-300'
+                )}>
+                  {step.status === 'completed' ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
+                </div>
+
+                {/* Step info */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                      {step.name}
+                    </span>
+                  </div>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                    {step.description}
+                  </p>
+                </div>
+
+                {/* Status / Actions */}
+                {isActive && step.status === 'pending' && index === execution.currentStep && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => onUpdateStep(index, 'completed')}
+                      className="px-2 py-1 text-xs bg-green-600/20 text-green-400 rounded hover:bg-green-600/30"
+                    >
+                      Complete
+                    </button>
+                    <button
+                      onClick={() => onUpdateStep(index, 'skipped')}
+                      className="px-2 py-1 text-xs bg-yellow-600/20 text-yellow-400 rounded hover:bg-yellow-600/30"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                )}
+                {step.status && step.status !== 'pending' && (
+                  <span className={clsx(
+                    'text-xs px-2 py-0.5 rounded capitalize',
+                    step.status === 'completed' && 'bg-green-600/20 text-green-400',
+                    step.status === 'running' && 'bg-blue-600/20 text-blue-400',
+                    step.status === 'failed' && 'bg-red-600/20 text-red-400',
+                    step.status === 'skipped' && 'bg-yellow-600/20 text-yellow-400'
+                  )}>
+                    {step.status}
+                  </span>
+                )}
+              </div>
+
+              {/* Connector line */}
+              {index < execution.stepsData.length - 1 && (
+                <div className="ml-6 h-4 border-l-2 border-dashed" style={{ borderColor: 'var(--color-border)' }} />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface PlaybookDetailProps {
   playbook: Playbook
   onEdit: () => void
@@ -556,7 +839,7 @@ function PlaybookDetail({ playbook, onEdit, onDelete, onDuplicate, onToggle, onA
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2 mt-4">
+        <div className="flex items-center gap-2 mt-4 flex-wrap">
           {playbook.status === 'active' && (
             <button
               onClick={onRun}
@@ -625,7 +908,7 @@ function PlaybookDetail({ playbook, onEdit, onDelete, onDuplicate, onToggle, onA
         <div>
           <p className="text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>Trigger</p>
           <p className="text-sm font-medium capitalize" style={{ color: 'var(--color-text-primary)' }}>
-            {playbook.trigger === 'alert_rule' ? `Alert Rule: ${playbook.triggerConfig?.rule_name}` : playbook.trigger}
+            {playbook.trigger === 'alert_rule' ? `Alert Rule: ${playbook.triggerConfig?.rule_name || 'N/A'}` : playbook.trigger}
           </p>
         </div>
         <div>
@@ -649,83 +932,69 @@ function PlaybookDetail({ playbook, onEdit, onDelete, onDuplicate, onToggle, onA
         <h3 className="font-medium mb-3" style={{ color: 'var(--color-text-primary)' }}>
           Workflow Steps ({playbook.steps.length})
         </h3>
-        <div className="space-y-2">
-          {playbook.steps.map((step, index) => (
-            <div key={step.id}>
-              <div
-                onClick={() => toggleStep(step.id)}
-                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-slate-700/30"
-                style={{ backgroundColor: 'var(--color-bg-tertiary)' }}
-              >
-                {/* Step number */}
-                <div className={clsx(
-                  'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold',
-                  step.status === 'completed' ? 'bg-green-600 text-white' :
-                  step.status === 'running' ? 'bg-blue-600 text-white animate-pulse' :
-                  step.status === 'failed' ? 'bg-red-600 text-white' :
-                  'bg-slate-600 text-slate-300'
-                )}>
-                  {step.status === 'completed' ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
-                </div>
-
-                {/* Step info */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                      {step.name}
-                    </span>
-                    <span className="text-xs px-1.5 py-0.5 rounded capitalize" style={{
-                      backgroundColor: 'var(--color-bg-secondary)',
-                      color: 'var(--color-text-muted)'
-                    }}>
-                      {step.type}
-                    </span>
+        {playbook.steps.length === 0 ? (
+          <p className="text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
+            No steps defined yet
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {playbook.steps.map((step, index) => (
+              <div key={step.id}>
+                <div
+                  onClick={() => toggleStep(step.id)}
+                  className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-slate-700/30"
+                  style={{ backgroundColor: 'var(--color-bg-tertiary)' }}
+                >
+                  {/* Step number */}
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-slate-600 text-slate-300">
+                    {index + 1}
                   </div>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                    {step.description}
-                  </p>
+
+                  {/* Step info */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                        {step.name}
+                      </span>
+                      <span className="text-xs px-1.5 py-0.5 rounded capitalize" style={{
+                        backgroundColor: 'var(--color-bg-secondary)',
+                        color: 'var(--color-text-muted)'
+                      }}>
+                        {step.type}
+                      </span>
+                    </div>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                      {step.description}
+                    </p>
+                  </div>
+
+                  <ChevronDown className={clsx(
+                    'w-4 h-4 transition-transform',
+                    expandedSteps.has(step.id) && 'rotate-180'
+                  )} style={{ color: 'var(--color-text-muted)' }} />
                 </div>
 
-                {/* Status indicator */}
-                {step.status && (
-                  <span className={clsx(
-                    'text-xs px-2 py-0.5 rounded capitalize',
-                    step.status === 'completed' && 'bg-green-600/20 text-green-400',
-                    step.status === 'running' && 'bg-blue-600/20 text-blue-400',
-                    step.status === 'failed' && 'bg-red-600/20 text-red-400',
-                    step.status === 'pending' && 'bg-slate-600/20 text-slate-400',
-                    step.status === 'skipped' && 'bg-yellow-600/20 text-yellow-400'
-                  )}>
-                    {step.status}
-                  </span>
+                {/* Expanded step details */}
+                {expandedSteps.has(step.id) && (
+                  <div
+                    className="ml-10 mt-1 p-3 rounded-lg text-sm"
+                    style={{ backgroundColor: 'var(--color-bg-secondary)' }}
+                  >
+                    <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>Configuration:</p>
+                    <pre className="text-xs overflow-x-auto" style={{ color: 'var(--color-text-primary)' }}>
+                      {JSON.stringify(step.config, null, 2)}
+                    </pre>
+                  </div>
                 )}
 
-                <ChevronDown className={clsx(
-                  'w-4 h-4 transition-transform',
-                  expandedSteps.has(step.id) && 'rotate-180'
-                )} style={{ color: 'var(--color-text-muted)' }} />
+                {/* Connector line */}
+                {index < playbook.steps.length - 1 && (
+                  <div className="ml-6 h-4 border-l-2 border-dashed" style={{ borderColor: 'var(--color-border)' }} />
+                )}
               </div>
-
-              {/* Expanded step details */}
-              {expandedSteps.has(step.id) && (
-                <div
-                  className="ml-10 mt-1 p-3 rounded-lg text-sm"
-                  style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-                >
-                  <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>Configuration:</p>
-                  <pre className="text-xs overflow-x-auto" style={{ color: 'var(--color-text-primary)' }}>
-                    {JSON.stringify(step.config, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              {/* Connector line */}
-              {index < playbook.steps.length - 1 && (
-                <div className="ml-6 h-4 border-l-2 border-dashed" style={{ borderColor: 'var(--color-border)' }} />
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

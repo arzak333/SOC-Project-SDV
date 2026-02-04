@@ -62,6 +62,7 @@ def create_app(config_name: str = None) -> Flask:
     from app.routes.ingest import ingest_bp
     from app.routes.endpoints import endpoints_bp
     from app.routes.auth import auth_bp
+    from app.routes.playbooks import playbooks_bp
 
     app.register_blueprint(events_bp, url_prefix='/api')
     app.register_blueprint(dashboard_bp, url_prefix='/api')
@@ -69,6 +70,7 @@ def create_app(config_name: str = None) -> Flask:
     app.register_blueprint(ingest_bp, url_prefix='/api')
     app.register_blueprint(endpoints_bp, url_prefix='/api')
     app.register_blueprint(auth_bp, url_prefix='/api')
+    app.register_blueprint(playbooks_bp, url_prefix='/api')
 
     # Health check
     @app.route('/health')
