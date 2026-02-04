@@ -190,6 +190,32 @@ new → investigating → resolved
 - [ ] Email/Webhook notifications (configured but not connected)
 - [ ] Real SIEM integration (Wazuh/ELK)
 
+## Token Optimization Guidelines
+
+When working on this project, minimize token consumption:
+
+### Do
+- **Deploy first, explain later**: Run commands, check results, then summarize briefly
+- **Batch operations**: Combine multiple curl/docker commands when testing
+- **Skip verbose output**: Use `--tail=10` instead of `--tail=50`, pipe to `head`
+- **Trust the code**: If previous session wrote code, just deploy and test it
+- **One-line status**: "Backend restarted, tables created, API working at /playbooks"
+
+### Don't
+- Don't re-read files already in context from previous session
+- Don't explain what you're about to do before doing it
+- Don't show full API responses when a summary suffices
+- Don't create test data manually when the feature can be tested via UI
+- Don't over-document simple operations (restart, migrate, test)
+
+### After Context Compaction
+When resuming from a previous session:
+1. Check what was already implemented (read summary)
+2. Deploy immediately: `docker compose restart backend`
+3. Run migration if needed
+4. One test to verify: `curl -s localhost:5000/api/endpoint | head -5`
+5. Report: "Feature X is live at http://localhost:3000/page"
+
 ## Environment
 
 ### URLs (development)
