@@ -203,7 +203,6 @@ When working on this project, minimize token consumption:
 
 ### Don't
 - Don't re-read files already in context from previous session
-- Don't explain what you're about to do before doing it
 - Don't show full API responses when a summary suffices
 - Don't create test data manually when the feature can be tested via UI
 - Don't over-document simple operations (restart, migrate, test)
