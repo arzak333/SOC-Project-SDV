@@ -1,72 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Server, Activity, AlertTriangle, ChevronRight, RefreshCw, FileText, Search } from 'lucide-react'
 import clsx from 'clsx'
 import Modal from './Modal'
 import { Endpoint, EndpointStatus as EndpointStatusType } from '../types'
+import { fetchSitesSummary } from '../api'
 
 interface EndpointStatusCardProps {
     endpoints?: Endpoint[]
     loading?: boolean
     onEndpointClick?: (endpoint: Endpoint) => void
     maxDisplay?: number
-}
-
-// French audioprothesiste center names and locations
-const FRENCH_CENTERS: Array<{ name: string; location: string; region: string }> = [
-    { name: 'AudioPro Paris Opera', location: 'Paris', region: 'Ile-de-France' },
-    { name: 'AudioPro Lyon Part-Dieu', location: 'Lyon', region: 'Auvergne-Rhone-Alpes' },
-    { name: 'AudioPro Marseille Vieux-Port', location: 'Marseille', region: 'Provence-Alpes-Cote d\'Azur' },
-    { name: 'AudioPro Toulouse Capitole', location: 'Toulouse', region: 'Occitanie' },
-    { name: 'AudioPro Nice Promenade', location: 'Nice', region: 'Provence-Alpes-Cote d\'Azur' },
-    { name: 'AudioPro Nantes Graslin', location: 'Nantes', region: 'Pays de la Loire' },
-    { name: 'AudioPro Strasbourg Centre', location: 'Strasbourg', region: 'Grand Est' },
-    { name: 'AudioPro Montpellier Comedie', location: 'Montpellier', region: 'Occitanie' },
-    { name: 'AudioPro Bordeaux Saint-Jean', location: 'Bordeaux', region: 'Nouvelle-Aquitaine' },
-    { name: 'AudioPro Lille Flandres', location: 'Lille', region: 'Hauts-de-France' },
-    { name: 'AudioPro Rennes Republique', location: 'Rennes', region: 'Bretagne' },
-    { name: 'AudioPro Reims Cathedrale', location: 'Reims', region: 'Grand Est' },
-    { name: 'AudioPro Le Havre Plage', location: 'Le Havre', region: 'Normandie' },
-    { name: 'AudioPro Saint-Etienne Centre', location: 'Saint-Etienne', region: 'Auvergne-Rhone-Alpes' },
-    { name: 'AudioPro Toulon Port', location: 'Toulon', region: 'Provence-Alpes-Cote d\'Azur' },
-    { name: 'AudioPro Grenoble Bastille', location: 'Grenoble', region: 'Auvergne-Rhone-Alpes' },
-    { name: 'AudioPro Dijon Centre', location: 'Dijon', region: 'Bourgogne-Franche-Comte' },
-    { name: 'AudioPro Angers Centre', location: 'Angers', region: 'Pays de la Loire' },
-    { name: 'AudioPro Nimes Arenes', location: 'Nimes', region: 'Occitanie' },
-    { name: 'AudioPro Clermont-Ferrand Place de Jaude', location: 'Clermont-Ferrand', region: 'Auvergne-Rhone-Alpes' },
-    { name: 'AudioPro Le Mans Jacobins', location: 'Le Mans', region: 'Pays de la Loire' },
-    { name: 'AudioPro Aix-en-Provence Rotonde', location: 'Aix-en-Provence', region: 'Provence-Alpes-Cote d\'Azur' },
-    { name: 'AudioPro Brest Siam', location: 'Brest', region: 'Bretagne' },
-    { name: 'AudioPro Tours Centre', location: 'Tours', region: 'Centre-Val de Loire' },
-    { name: 'AudioPro Amiens Centre', location: 'Amiens', region: 'Hauts-de-France' },
-    { name: 'AudioPro Limoges Centre', location: 'Limoges', region: 'Nouvelle-Aquitaine' },
-    { name: 'AudioPro Perpignan Centre', location: 'Perpignan', region: 'Occitanie' },
-    { name: 'AudioPro Metz Centre', location: 'Metz', region: 'Grand Est' },
-    { name: 'AudioPro Besancon Centre', location: 'Besancon', region: 'Bourgogne-Franche-Comte' },
-    { name: 'AudioPro Orleans Centre', location: 'Orleans', region: 'Centre-Val de Loire' },
-]
-
-// Generate mock endpoint data
-function generateMockEndpoints(): Endpoint[] {
-    return FRENCH_CENTERS.slice(0, 10).map((center, index) => {
-        const statuses: EndpointStatusType[] = ['online', 'online', 'online', 'online', 'degraded', 'offline']
-        const status = statuses[Math.floor(Math.random() * statuses.length)]
-
-        return {
-            id: `endpoint-${index + 1}`,
-            site_id: `AUDIO_${String(index + 1).padStart(3, '0')}`,
-            name: center.name,
-            location: center.location,
-            ip_address: `192.168.${index + 1}.1`,
-            status,
-            health: status === 'online' ? 85 + Math.floor(Math.random() * 15) :
-                    status === 'degraded' ? 40 + Math.floor(Math.random() * 30) : 0,
-            last_seen: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-            event_count_24h: Math.floor(Math.random() * 500) + 50,
-            critical_alerts: status === 'offline' ? Math.floor(Math.random() * 5) + 1 :
-                            status === 'degraded' ? Math.floor(Math.random() * 3) : 0,
-            type: 'center',
-        }
-    })
 }
 
 const statusConfig: Record<EndpointStatusType, { color: string; bg: string; label: string }> = {
@@ -161,17 +104,53 @@ function EndpointDetailModal({ endpoint, isOpen, onClose }: EndpointDetailModalP
     )
 }
 
+function sitesToEndpoints(sites: Array<{ site_id: string; total: number; critical: number; high: number }>): Endpoint[] {
+    return sites.map((site) => {
+        const hasCritical = site.critical > 0
+        const hasHigh = site.high > 0
+        const status: EndpointStatusType = hasCritical ? 'offline' : hasHigh ? 'degraded' : 'online'
+        const health = hasCritical ? 30 : hasHigh ? 60 : 95
+
+        return {
+            id: site.site_id,
+            site_id: site.site_id,
+            name: site.site_id,
+            location: '',
+            ip_address: '',
+            status,
+            health,
+            last_seen: new Date().toISOString(),
+            event_count_24h: site.total,
+            critical_alerts: site.critical,
+            type: 'center',
+        }
+    })
+}
+
 export default function EndpointStatusCard({
     endpoints: propEndpoints,
-    loading = false,
+    loading: propLoading = false,
     onEndpointClick,
     maxDisplay = 5,
 }: EndpointStatusCardProps) {
     const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null)
     const [modalOpen, setModalOpen] = useState(false)
+    const [fetchedEndpoints, setFetchedEndpoints] = useState<Endpoint[]>([])
+    const [loading, setLoading] = useState(propLoading)
 
-    // Use provided endpoints or generate mock data
-    const endpoints = propEndpoints || generateMockEndpoints()
+    useEffect(() => {
+        if (!propEndpoints) {
+            setLoading(true)
+            fetchSitesSummary()
+                .then((data) => {
+                    setFetchedEndpoints(sitesToEndpoints(data.sites || []))
+                })
+                .catch(() => setFetchedEndpoints([]))
+                .finally(() => setLoading(false))
+        }
+    }, [propEndpoints])
+
+    const endpoints = propEndpoints || fetchedEndpoints
     const displayedEndpoints = endpoints.slice(0, maxDisplay)
 
     // Calculate stats
@@ -218,6 +197,10 @@ export default function EndpointStatusCard({
                     <div className="flex items-center justify-center h-48">
                         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
                     </div>
+                ) : endpoints.length === 0 ? (
+                    <div className="flex items-center justify-center h-48 text-slate-500">
+                        No endpoints detected yet
+                    </div>
                 ) : (
                     <div className="space-y-2">
                         {displayedEndpoints.map((endpoint) => {
@@ -234,7 +217,9 @@ export default function EndpointStatusCard({
                                             <p className="font-medium text-slate-200 group-hover:text-white transition-colors">
                                                 {endpoint.name}
                                             </p>
-                                            <p className="text-xs text-slate-500">{endpoint.location}</p>
+                                            {endpoint.location && (
+                                                <p className="text-xs text-slate-500">{endpoint.location}</p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4">
@@ -242,7 +227,7 @@ export default function EndpointStatusCard({
                                             <div className="flex items-center gap-1">
                                                 <Activity className="w-3 h-3 text-slate-500" />
                                                 <span className="text-sm text-slate-400">
-                                                    {endpoint.health}%
+                                                    {endpoint.event_count_24h} events
                                                 </span>
                                             </div>
                                             {endpoint.critical_alerts > 0 && (

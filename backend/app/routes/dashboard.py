@@ -47,10 +47,14 @@ def get_stats():
         .all()
     )
 
+    # Unique sites
+    total_sites = db.session.query(func.count(func.distinct(Event.site_id))).scalar() or 0
+
     return jsonify({
         'total_events': total_events,
         'events_last_24h': events_24h,
         'critical_open': critical_open,
+        'total_sites': total_sites,
         'by_status': {
             status.value if hasattr(status, 'value') else str(status): count
             for status, count in status_counts.items()

@@ -215,6 +215,21 @@ When resuming from a previous session:
 4. One test to verify: `curl -s localhost:5000/api/endpoint | head -5`
 5. Report: "Feature X is live at http://localhost:3000/page"
 
+## Working Guidelines
+
+### Before Implementation
+- **Surface assumptions** on non-trivial tasks - state what you're assuming, proceed unless corrected
+- **Ask on ambiguity** - if requirements conflict or are unclear, ask rather than guess wrong
+
+### During Implementation
+- **Scope discipline** - touch only what's asked; no unsolicited refactoring or "cleanup"
+- **Simplicity first** - if 1000 lines when 100 would suffice, you have failed. Prefer the boring, obvious solution. Cleverness is expensive.
+- **Push back** when the approach has clear problems - explain the issue, propose alternative
+
+### After Implementation
+- **Verify it works** - quick test before reporting done
+- **Note concerns** - flag risks or things to verify briefly
+
 ## Environment
 
 ### URLs (development)

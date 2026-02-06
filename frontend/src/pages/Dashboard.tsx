@@ -229,16 +229,14 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
         <StatCard
           icon={<Monitor className="w-6 h-6" />}
           label="Endpoints Monitored"
-          value={32}
-          trend={{ value: 2.1, isPositive: true }}
+          value={stats?.total_sites ?? 0}
           linkTo="/sites"
         />
         <StatCard
           icon={<Users className="w-6 h-6" />}
-          label="CRM User Sessions"
-          value={128}
-          trend={{ value: 0.8, isPositive: true }}
-          onClick={() => toast.info('Session logs feature coming soon')}
+          label="Event Sources"
+          value={stats?.by_source ? Object.keys(stats.by_source).length : 0}
+          linkTo="/events"
         />
       </div>
 
