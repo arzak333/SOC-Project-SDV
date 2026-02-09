@@ -43,6 +43,7 @@ export interface DashboardStats {
   total_events: number
   events_last_24h: number
   critical_open: number
+  total_sites: number
   by_status: Record<string, number>
   by_severity: Record<string, number>
   by_source: Record<string, number>

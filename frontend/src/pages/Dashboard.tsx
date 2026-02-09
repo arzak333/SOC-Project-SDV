@@ -134,7 +134,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const eventVolumeData = trends?.hourly?.map((h: { hour: string; count: number }) => ({
     time: h.hour,
     value: h.count,
-  })) || generateMockHourlyData()
+  })) || []
 
   // Transform source data to pie chart format with sourceKey
   const alertsBySourceData = stats?.by_source
@@ -144,7 +144,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
       color: SOURCE_COLORS[name] || '#64748b',
       sourceKey: name,
     }))
-    : generateMockSourceData()
+    : []
 
   // Transform recent alerts to table format with sourceKey
   const recentAlerts = [...realtimeEvents, ...criticalAlerts]
@@ -164,11 +164,8 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
       assignee: e.assigned_to,
     }))
 
-  // Calculate trend percentages (mock for now)
-  const yesterdayEvents = stats?.total_events ? Math.round(stats.total_events * 0.88) : 0
-  const eventsTrend = stats?.total_events
-    ? parseFloat((((stats.total_events - yesterdayEvents) / yesterdayEvents) * 100).toFixed(1))
-    : 12.5
+  // Trend: null until we have real comparison data
+  const eventsTrend: number | null = null
 
   return (
     <div className="space-y-6">
@@ -214,15 +211,14 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
         <StatCard
           icon={<Activity className="w-6 h-6" />}
           label="Security Events"
-          value={stats?.total_events ?? 14203}
-          trend={{ value: eventsTrend, isPositive: true }}
+          value={stats?.total_events ?? 0}
+          trend={eventsTrend !== null ? { value: eventsTrend, isPositive: eventsTrend >= 0 } : undefined}
           linkTo="/events"
         />
         <StatCard
           icon={<AlertTriangle className="w-6 h-6" />}
           label="Active Alerts"
-          value={stats?.critical_open ?? 23}
-          trend={{ value: 5.2, isPositive: false }}
+          value={stats?.critical_open ?? 0}
           linkTo="/alerts"
           linkParams={{ status: 'new,investigating' }}
         />
@@ -306,24 +302,3 @@ function formatSourceName(source: string): string {
   return names[source] || source.charAt(0).toUpperCase() + source.slice(1)
 }
 
-// Mock data generators for demo mode
-function generateMockHourlyData() {
-  const hours = []
-  for (let i = 0; i <= 23; i++) {
-    const hour = i.toString().padStart(2, '0') + ':00'
-    let value = 500
-    if (i >= 6 && i <= 12) value = 1500 + Math.random() * 2000
-    else if (i >= 13 && i <= 18) value = 1000 + Math.random() * 1000
-    hours.push({ time: hour, value: Math.round(value) })
-  }
-  return hours
-}
-
-function generateMockSourceData() {
-  return [
-    { name: 'Apps (CRM)', value: 35, color: '#22c55e', sourceKey: 'application' },
-    { name: 'Firewalls', value: 30, color: '#ef4444', sourceKey: 'firewall' },
-    { name: 'Servers', value: 20, color: '#3b82f6', sourceKey: 'ids' },
-    { name: 'Workstations', value: 15, color: '#f59e0b', sourceKey: 'endpoint' },
-  ]
-}

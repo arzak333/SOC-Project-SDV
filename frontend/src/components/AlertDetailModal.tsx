@@ -17,7 +17,7 @@ import Modal from './Modal'
 import LoadingSpinner from './LoadingSpinner'
 import { toast } from './Toast'
 import { SecurityEvent, Severity, EventStatus, AlertComment, Analyst, TimelineEvent } from '../types'
-import { fetchEvent, updateEventStatus, fetchEventComments, addEventComment } from '../api'
+import { fetchEvent, updateEventStatus, fetchEventComments, addEventComment, fetchAnalysts } from '../api'
 
 interface AlertDetailModalProps {
   eventId: string | null
@@ -49,15 +49,7 @@ const statusStyles: Record<EventStatus, { bg: string; text: string }> = {
   false_positive: { bg: 'bg-slate-500/20', text: 'text-slate-400' },
 }
 
-// Mock analysts for demo
-const mockAnalysts: Analyst[] = [
-  { id: '1', name: 'Jean Dupont', email: 'j.dupont@audiopro.fr', role: 'analyst' },
-  { id: '2', name: 'Marie Martin', email: 'm.martin@audiopro.fr', role: 'analyst' },
-  { id: '3', name: 'Pierre Bernard', email: 'p.bernard@audiopro.fr', role: 'supervisor' },
-  { id: '4', name: 'Sophie Durand', email: 's.durand@audiopro.fr', role: 'admin' },
-]
-
-// Mock timeline for demo
+// Placeholder timeline until real audit trail is implemented
 function generateMockTimeline(event: SecurityEvent): TimelineEvent[] {
   const baseTime = new Date(event.timestamp)
   return [
@@ -100,7 +92,7 @@ export default function AlertDetailModal({
   const [saving, setSaving] = useState(false)
   const [comments, setComments] = useState<AlertComment[]>([])
   const [newComment, setNewComment] = useState('')
-  const [analysts] = useState<Analyst[]>(mockAnalysts)
+  const [analysts, setAnalysts] = useState<Analyst[]>([])
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
 
   useEffect(() => {
@@ -116,6 +108,14 @@ export default function AlertDetailModal({
       const eventData = await fetchEvent(eventId)
       setEvent(eventData)
       setTimeline(generateMockTimeline(eventData))
+
+      // Load analysts from API
+      try {
+        const analyticsData = await fetchAnalysts()
+        setAnalysts(analyticsData.analysts || [])
+      } catch {
+        setAnalysts([])
+      }
 
       // Try to load comments (may fail if endpoint not implemented)
       try {

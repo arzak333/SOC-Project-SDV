@@ -116,6 +116,17 @@ export async function fetchAnalysts(): Promise<{ analysts: Analyst[] }> {
   return data
 }
 
+// Assets (GLPI)
+export async function fetchAssets(): Promise<{ assets: Record<string, unknown>[]; total: number }> {
+  const { data } = await api.get('/assets')
+  return data
+}
+
+export async function fetchAssetByName(name: string): Promise<Record<string, unknown>> {
+  const { data } = await api.get(`/assets/${encodeURIComponent(name)}`)
+  return data
+}
+
 // Dashboard with time range
 export async function fetchDashboardStatsWithRange(timeRange: string): Promise<DashboardStats> {
   const { data } = await api.get('/dashboard/stats', { params: { time_range: timeRange } })

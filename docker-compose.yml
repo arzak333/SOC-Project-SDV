@@ -40,8 +40,14 @@ services:
       - DATABASE_URL=postgresql://soc_user:soc_password@db:5432/soc_dashboard
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=dev-secret-key-change-in-production
+      - GLPI_URL=http://glpi-crm/apirest.php
+      - GLPI_APP_TOKEN=${GLPI_APP_TOKEN:-}
+      - GLPI_USER_TOKEN=${GLPI_USER_TOKEN:-}
     ports:
       - "5000:5000"
+    networks:
+      - default
+      - infrastructure_infra-net
     depends_on:
       db:
         condition: service_healthy
@@ -105,6 +111,10 @@ services:
       - ./frontend:/app
       - /app/node_modules
     command: npm run dev -- --host
+
+networks:
+  infrastructure_infra-net:
+    external: true
 
 volumes:
   postgres_data:

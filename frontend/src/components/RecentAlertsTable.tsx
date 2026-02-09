@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, User } from 'lucide-react'
 import clsx from 'clsx'
-import { Severity } from '../types'
+import { Severity, Analyst } from '../types'
+import { fetchAnalysts } from '../api'
 
 interface AlertRow {
     id: string
@@ -29,13 +30,6 @@ const severityStyles: Record<Severity, string> = {
     low: 'badge-low',
 }
 
-// Mock analysts for quick assign
-const quickAssignOptions = [
-    { id: '1', name: 'Jean Dupont' },
-    { id: '2', name: 'Marie Martin' },
-    { id: '3', name: 'Pierre Bernard' },
-]
-
 export default function RecentAlertsTable({
     alerts,
     isLive = true,
@@ -45,6 +39,13 @@ export default function RecentAlertsTable({
     filterLabel,
 }: RecentAlertsTableProps) {
     const [assignDropdownId, setAssignDropdownId] = useState<string | null>(null)
+    const [quickAssignOptions, setQuickAssignOptions] = useState<Analyst[]>([])
+
+    useEffect(() => {
+        fetchAnalysts()
+            .then((data) => setQuickAssignOptions(data.analysts || []))
+            .catch(() => setQuickAssignOptions([]))
+    }, [])
 
     // Filter alerts if source filter is active
     const displayedAlerts = filteredSource
