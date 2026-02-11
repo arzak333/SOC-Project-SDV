@@ -17,18 +17,22 @@ Ce projet répond au cahier des charges d'un client souhaitant centraliser la su
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Frontend (React)                          │
-│  Dashboard │ Events │ Alert Rules │ Sites                        │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ WebSocket + REST API
-┌──────────────────────────┴──────────────────────────────────────┐
-│                     Backend (Flask)                              │
-│  /api/events │ /api/ingest │ /api/dashboard │ /api/alerts        │
-└───────┬─────────────────┬─────────────────┬─────────────────────┘
-        │                 │                 │
-   PostgreSQL          Redis           Celery
-   (Events DB)      (Task Queue)    (Alert Engine)
+                                              ┌──────────────────────────────┐
+                                              │   INFRASTRUCTURE (infra/)     │
+                                              │                              │
+┌──────────────────────────────────────┐      │  endpoint-pc-01 ─┐           │
+│         Frontend (React) :3000        │      │  endpoint-pc-02 ─┤→ Wazuh   │
+│  Dashboard│Events│Alerts│Playbooks    │      │                  │  Agents   │
+└─────────────────┬────────────────────┘      │                  ▼           │
+                  │ WebSocket + REST           │           Wazuh Manager      │
+┌─────────────────┴────────────────────┐      │            │         │       │
+│         Backend (Flask) :5000         │◄─────│── webhook ─┘   Wazuh Dash.  │
+│  /api/ingest│events│dashboard│alerts  │      │                 :4443       │
+│  /api/endpoints│analysts│assets ──────│─────►│── GLPI :8080               │
+└──┬──────────────┬──────────────┬─────┘      └──────────────────────────────┘
+   │              │              │
+PostgreSQL     Redis         Celery
+(Events DB)  (Task Queue)  (Alert Engine)
 ```
 
 ## Stack Technique
@@ -39,6 +43,9 @@ Ce projet répond au cahier des charges d'un client souhaitant centraliser la su
 | Backend | Python 3.11, Flask, SQLAlchemy, Flask-SocketIO |
 | Database | PostgreSQL 15 |
 | Task Queue | Celery + Redis |
+| SIEM | Wazuh 4.14.2 (Manager, Indexer, Dashboard) |
+| Endpoints | Ubuntu 22.04 + Wazuh Agent (conteneurs simulés) |
+| CRM / Assets | GLPI + MariaDB 10.11 |
 | Conteneurisation | Docker, Docker Compose |
 
 ## Démarrage Rapide
@@ -68,7 +75,75 @@ docker compose exec backend python -c "from app import create_app, db, init_demo
 - **Backend API**: http://localhost:5000
 - **API Health**: http://localhost:5000/health
 
-### Identifiants de démo
+### Étape 2 : Déployer l'infrastructure (métriques réelles)
+
+L'infrastructure Wazuh est nécessaire pour alimenter le dashboard avec de vrais événements de sécurité.
+
+```bash
+# Configurer le kernel pour Wazuh Indexer (OpenSearch)
+sudo sysctl -w vm.max_map_count=262144
+
+# Générer les certificats SSL (une seule fois)
+cd infrastructure/
+docker compose -f generate-certs.yml run --rm generator
+
+# Démarrer toute l'infrastructure
+docker compose up -d
+
+# Revenir à la racine
+cd ..
+```
+
+**Vérification :**
+
+```bash
+# Vérifier que les agents sont connectés
+docker exec infrastructure-wazuh-manager-1 /var/ossec/bin/agent_control -l
+# Attendu : endpoint-pc-01 et endpoint-pc-02 en status "Active"
+
+# Vérifier que les événements arrivent dans le SOC
+curl -s http://localhost:5000/api/dashboard/stats | python3 -m json.tool
+# Attendu : total_events > 0, total_sites >= 2
+```
+
+Les événements commencent à apparaître dans le dashboard sous 1-2 minutes.
+
+### Étape 3 (optionnel) : Configurer GLPI pour la gestion d'actifs
+
+GLPI permet d'enrichir les événements avec les informations d'inventaire IT.
+
+1. Accéder à GLPI : http://localhost:8080
+2. Se connecter avec `glpi` / `glpi`
+3. **Setup > General > API** :
+   - Activer "Enable REST API" → **Yes**
+   - Activer "Enable login with external token" → **Yes**
+   - Cliquer sur **API clients** → ouvrir le client par défaut
+   - Mettre **Active** → Yes, noter le **App-Token**
+4. **Administration > Users > glpi > Remote access keys** :
+   - Régénérer le token API, noter le **User Token**
+5. Configurer les tokens dans le SOC :
+   ```bash
+   # Ajouter dans un fichier .env ou directement dans docker-compose.yml
+   GLPI_APP_TOKEN=<votre_app_token>
+   GLPI_USER_TOKEN=<votre_user_token>
+
+   # Redémarrer le backend
+   docker compose restart backend
+   ```
+6. Vérifier : `curl -s http://localhost:5000/api/assets`
+
+---
+
+## Accès aux Interfaces
+
+| Interface | URL | Identifiants |
+|-----------|-----|-------------|
+| SOC Dashboard | http://localhost:3000 | admin / admin123 |
+| Backend API | http://localhost:5000 | - |
+| Wazuh Dashboard | https://localhost:4443 | admin / SecretPassword |
+| GLPI | http://localhost:8080 | glpi / glpi |
+
+### Identifiants SOC
 
 | Utilisateur | Mot de passe | Rôle |
 |-------------|--------------|------|
@@ -160,6 +235,15 @@ npm run dev
 | PATCH | `/api/alerts/rules/:id` | Modifier une règle |
 | DELETE | `/api/alerts/rules/:id` | Supprimer une règle |
 
+### Endpoints, Analysts & Assets
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/endpoints` | Endpoints monitorés (données réelles depuis la DB) |
+| GET | `/api/analysts` | Liste des analystes (depuis le modèle User) |
+| GET | `/api/assets` | Ordinateurs GLPI |
+| GET | `/api/assets/:name` | Recherche asset par nom d'hôte |
+
 ## Structure des Événements
 
 ```json
@@ -188,9 +272,9 @@ npm run dev
 - [x] Analyse initiale
 - [x] Document Architecture Technique
 - [x] Démonstrateur opérationnel
-- [ ] Dashboards & alertes configurés
-- [ ] Playbooks / procédures
-- [ ] Rapport technique complet
+- [x] Dashboards & alertes configurés
+- [x] Playbooks / procédures
+- [x] Rapport technique complet
 - [ ] Guide de déploiement & d'utilisation
 - [ ] Vidéo de démonstration
 
