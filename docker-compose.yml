@@ -41,8 +41,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=dev-secret-key-change-in-production
       - GLPI_URL=http://glpi-crm/apirest.php
-      - GLPI_APP_TOKEN=${GLPI_APP_TOKEN:-}
-      - GLPI_USER_TOKEN=${GLPI_USER_TOKEN:-}
+      - GLPI_APP_TOKEN=b6W2NSYLqy3UF1spssoeQguYZcrVwNglT8QO0NoD
+      - GLPI_USER_TOKEN=iqtYcWdxtcO330aHP1pimDehAInS38k26RzhNLMY
     ports:
       - "5000:5000"
     networks:

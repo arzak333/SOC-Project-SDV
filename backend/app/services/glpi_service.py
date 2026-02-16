@@ -18,15 +18,15 @@ class GLPIClient:
 
     def _init_session(self) -> bool:
         """Authenticate and get a session token."""
-        if not self.app_token or not self.user_token:
+        if not self.user_token:
             return False
         try:
+            headers = {'Authorization': f'user_token {self.user_token}'}
+            if self.app_token:
+                headers['App-Token'] = self.app_token
             resp = requests.get(
                 f'{self.base_url}/initSession',
-                headers={
-                    'App-Token': self.app_token,
-                    'Authorization': f'user_token {self.user_token}',
-                },
+                headers=headers,
                 timeout=5,
             )
             if resp.status_code == 200:
@@ -51,10 +51,10 @@ class GLPIClient:
         self.session_token = None
 
     def _headers(self) -> dict:
-        return {
-            'App-Token': self.app_token,
-            'Session-Token': self.session_token or '',
-        }
+        headers = {'Session-Token': self.session_token or ''}
+        if self.app_token:
+            headers['App-Token'] = self.app_token
+        return headers
 
     def get_computers(self, limit: int = 50) -> list:
         """Get list of computers from GLPI."""
