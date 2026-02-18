@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution } from './types'
+import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -117,7 +117,7 @@ export async function fetchAnalysts(): Promise<{ analysts: Analyst[] }> {
 }
 
 // Assets (GLPI)
-export async function fetchAssets(): Promise<{ assets: Record<string, unknown>[]; total: number }> {
+export async function fetchAssets(): Promise<{ assets: GLPIAsset[]; total: number }> {
   const { data } = await api.get('/assets')
   return data
 }

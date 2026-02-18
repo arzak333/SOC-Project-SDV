@@ -58,6 +58,21 @@ export interface SiteSummary {
   low: number
 }
 
+// GLPI Asset types
+export interface GLPIAsset {
+  id: number
+  name: string
+  comment: string | null
+  serial: string | null
+  otherserial: string | null
+  contact: string | null
+  date_creation: string
+  date_mod: string
+  entities_id: string
+  states_id: number
+  is_deleted: number
+}
+
 // Endpoint/Center types
 export type EndpointStatus = 'online' | 'offline' | 'degraded'
 

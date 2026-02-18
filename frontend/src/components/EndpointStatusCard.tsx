@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Server, Activity, AlertTriangle, ChevronRight, RefreshCw, FileText, Search } from 'lucide-react'
 import clsx from 'clsx'
 import Modal from './Modal'
@@ -25,9 +26,21 @@ interface EndpointDetailModalProps {
 }
 
 function EndpointDetailModal({ endpoint, isOpen, onClose }: EndpointDetailModalProps) {
+    const navigate = useNavigate()
+
     if (!endpoint) return null
 
     const config = statusConfig[endpoint.status]
+
+    function handleViewLogs() {
+        onClose()
+        navigate('/events', { state: { site_id: endpoint!.site_id } })
+    }
+
+    function handleInvestigate() {
+        onClose()
+        navigate('/events', { state: { site_id: endpoint!.site_id, severity: 'critical,high' } })
+    }
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={endpoint.name} size="lg">
@@ -85,7 +98,7 @@ function EndpointDetailModal({ endpoint, isOpen, onClose }: EndpointDetailModalP
                         Quick Actions
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors">
+                        <button onClick={handleViewLogs} className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors">
                             <FileText className="w-4 h-4" />
                             View Logs
                         </button>
@@ -93,7 +106,7 @@ function EndpointDetailModal({ endpoint, isOpen, onClose }: EndpointDetailModalP
                             <RefreshCw className="w-4 h-4" />
                             Restart Services
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors">
+                        <button onClick={handleInvestigate} className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors">
                             <Search className="w-4 h-4" />
                             Investigate
                         </button>
@@ -133,6 +146,7 @@ export default function EndpointStatusCard({
     onEndpointClick,
     maxDisplay = 5,
 }: EndpointStatusCardProps) {
+    const navigate = useNavigate()
     const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null)
     const [modalOpen, setModalOpen] = useState(false)
     const [fetchedEndpoints, setFetchedEndpoints] = useState<Endpoint[]>([])
@@ -246,7 +260,7 @@ export default function EndpointStatusCard({
                 )}
 
                 {endpoints.length > maxDisplay && (
-                    <button className="w-full mt-3 py-2 text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                    <button onClick={() => navigate('/sites')} className="w-full mt-3 py-2 text-sm text-blue-400 hover:text-blue-300 transition-colors">
                         View all {endpoints.length} endpoints
                     </button>
                 )}

@@ -187,3 +187,91 @@ body {
 .status-pulse {
   animation: status-pulse 2s ease-in-out infinite;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Light theme: remap hardcoded dark Tailwind classes.
+   [data-theme="light"] .class has higher specificity (0,2,0) than
+   a plain Tailwind utility (0,1,0), so no !important needed.
+───────────────────────────────────────────────────────────────── */
+
+/* Scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-track { background: #f1f5f9; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 9999px; }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* Form inputs: override text-white set on dark-bg inputs */
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea { color: #0f172a; }
+[data-theme="light"] input::placeholder { color: #94a3b8; }
+
+/* ── Solid backgrounds ── */
+[data-theme="light"] .bg-slate-950 { background-color: #f8fafc; }
+[data-theme="light"] .bg-slate-900 { background-color: #f1f5f9; }
+[data-theme="light"] .bg-slate-800 { background-color: #ffffff; }
+[data-theme="light"] .bg-slate-700 { background-color: #f1f5f9; }
+[data-theme="light"] .bg-slate-600 { background-color: #e2e8f0; }
+[data-theme="light"] .bg-gray-900  { background-color: #f1f5f9; }
+[data-theme="light"] .bg-gray-800  { background-color: #ffffff; }
+[data-theme="light"] .bg-gray-700  { background-color: #f1f5f9; }
+[data-theme="light"] .bg-gray-600  { background-color: #e2e8f0; }
+
+/* ── Alpha backgrounds ── */
+[data-theme="light"] .bg-slate-900\/95 { background-color: rgb(248 250 252 / 0.97); }
+[data-theme="light"] .bg-slate-800\/80 { background-color: rgb(255 255 255 / 0.9); }
+[data-theme="light"] .bg-slate-700\/30 { background-color: rgb(226 232 240 / 0.6); }
+[data-theme="light"] .bg-slate-700\/50 { background-color: rgb(226 232 240 / 0.7); }
+[data-theme="light"] .bg-gray-700\/30  { background-color: rgb(226 232 240 / 0.6); }
+[data-theme="light"] .bg-gray-700\/50  { background-color: rgb(226 232 240 / 0.7); }
+
+/* ── Hover backgrounds ── */
+[data-theme="light"] .hover\:bg-slate-900:hover  { background-color: #e2e8f0; }
+[data-theme="light"] .hover\:bg-slate-800:hover  { background-color: #f1f5f9; }
+[data-theme="light"] .hover\:bg-slate-700:hover  { background-color: #e2e8f0; }
+[data-theme="light"] .hover\:bg-slate-700\/50:hover { background-color: rgb(226 232 240 / 0.8); }
+[data-theme="light"] .hover\:bg-slate-700\/30:hover { background-color: rgb(226 232 240 / 0.5); }
+[data-theme="light"] .hover\:bg-gray-700:hover   { background-color: #e2e8f0; }
+[data-theme="light"] .hover\:bg-gray-700\/30:hover { background-color: rgb(226 232 240 / 0.5); }
+[data-theme="light"] .hover\:bg-gray-600:hover   { background-color: #cbd5e1; }
+
+/* ── Text colors ── */
+[data-theme="light"] .text-slate-100 { color: #0f172a; }
+[data-theme="light"] .text-slate-200 { color: #1e293b; }
+[data-theme="light"] .text-slate-300 { color: #334155; }
+[data-theme="light"] .text-slate-400 { color: #475569; }
+[data-theme="light"] .text-slate-500 { color: #64748b; }
+[data-theme="light"] .text-slate-600 { color: #94a3b8; }
+[data-theme="light"] .text-gray-100  { color: #0f172a; }
+[data-theme="light"] .text-gray-200  { color: #1e293b; }
+[data-theme="light"] .text-gray-300  { color: #334155; }
+[data-theme="light"] .text-gray-400  { color: #475569; }
+[data-theme="light"] .text-gray-500  { color: #64748b; }
+
+/* text-white: remap to dark on light backgrounds, but restore on colored buttons/badges */
+[data-theme="light"] .text-white { color: #0f172a; }
+[data-theme="light"] [class*="bg-blue-"].text-white,
+[data-theme="light"] [class*="bg-red-"].text-white,
+[data-theme="light"] [class*="bg-green-"].text-white,
+[data-theme="light"] [class*="bg-orange-"].text-white,
+[data-theme="light"] [class*="bg-yellow-"].text-white,
+[data-theme="light"] [class*="bg-purple-"].text-white,
+[data-theme="light"] [class*="bg-violet-"].text-white,
+[data-theme="light"] [class*="bg-indigo-"].text-white { color: #ffffff; }
+
+/* Hover & group-hover text */
+[data-theme="light"] .hover\:text-white:hover { color: #0f172a; }
+[data-theme="light"] .hover\:text-slate-200:hover { color: #1e293b; }
+[data-theme="light"] .group:hover .group-hover\:text-white { color: #0f172a; }
+
+/* ── Borders ── */
+[data-theme="light"] .border-slate-800   { border-color: #e2e8f0; }
+[data-theme="light"] .border-slate-700   { border-color: #e2e8f0; }
+[data-theme="light"] .border-slate-700\/50 { border-color: rgb(226 232 240 / 0.7); }
+[data-theme="light"] .border-slate-600   { border-color: #cbd5e1; }
+[data-theme="light"] .border-gray-700    { border-color: #e2e8f0; }
+[data-theme="light"] .border-gray-700\/50 { border-color: rgb(226 232 240 / 0.7); }
+[data-theme="light"] .border-gray-600    { border-color: #cbd5e1; }
+
+/* ── Divide ── */
+[data-theme="light"] .divide-slate-700 > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0; }
+[data-theme="light"] .divide-gray-700  > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0; }

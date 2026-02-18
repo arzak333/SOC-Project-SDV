@@ -49,35 +49,29 @@ const statusStyles: Record<EventStatus, { bg: string; text: string }> = {
   false_positive: { bg: 'bg-slate-500/20', text: 'text-slate-400' },
 }
 
-// Placeholder timeline until real audit trail is implemented
-function generateMockTimeline(event: SecurityEvent): TimelineEvent[] {
-  const baseTime = new Date(event.timestamp)
-  return [
+function buildTimelineFromData(event: SecurityEvent, comments: AlertComment[]): TimelineEvent[] {
+  const entries: TimelineEvent[] = [
     {
-      id: '1',
-      timestamp: baseTime.toISOString(),
-      action: 'Event detected',
+      id: 'ingested',
+      timestamp: event.timestamp,
+      action: 'Event ingested',
       actor: 'System',
       details: `${event.source} reported ${event.event_type}`,
     },
-    {
-      id: '2',
-      timestamp: new Date(baseTime.getTime() + 60000).toISOString(),
-      action: 'Alert created',
-      actor: 'Alert Engine',
-      details: `Severity: ${event.severity}`,
-    },
-    ...(event.status !== 'new'
-      ? [
-          {
-            id: '3',
-            timestamp: new Date(baseTime.getTime() + 120000).toISOString(),
-            action: 'Status changed to investigating',
-            actor: event.assigned_to || 'Analyst',
-          },
-        ]
-      : []),
   ]
+  const sorted = [...comments].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+  for (const c of sorted) {
+    entries.push({
+      id: c.id,
+      timestamp: c.created_at,
+      action: 'Comment added',
+      actor: c.author,
+      details: c.content,
+    })
+  }
+  return entries
 }
 
 export default function AlertDetailModal({
@@ -107,7 +101,6 @@ export default function AlertDetailModal({
     try {
       const eventData = await fetchEvent(eventId)
       setEvent(eventData)
-      setTimeline(generateMockTimeline(eventData))
 
       // Load analysts from API
       try {
@@ -117,13 +110,16 @@ export default function AlertDetailModal({
         setAnalysts([])
       }
 
-      // Try to load comments (may fail if endpoint not implemented)
+      // Load comments then build real timeline from event + comments
+      let loadedComments: AlertComment[] = []
       try {
         const commentsData = await fetchEventComments(eventId)
-        setComments(commentsData.comments || [])
+        loadedComments = commentsData.comments || []
+        setComments(loadedComments)
       } catch {
         setComments([])
       }
+      setTimeline(buildTimelineFromData(eventData, loadedComments))
     } catch (error) {
       console.error('Failed to load event:', error)
       toast.error('Failed to load alert details')
@@ -192,20 +188,29 @@ export default function AlertDetailModal({
     if (!event || !newComment.trim()) return
     try {
       // Try API first, fallback to local
+      let addedComment: AlertComment
       try {
-        const comment = await addEventComment(event.id, newComment)
-        setComments((prev) => [...prev, comment])
+        addedComment = await addEventComment(event.id, newComment)
       } catch {
-        // Fallback: add locally
-        const localComment: AlertComment = {
+        addedComment = {
           id: Date.now().toString(),
           event_id: event.id,
           author: 'Demo User',
           content: newComment,
           created_at: new Date().toISOString(),
         }
-        setComments((prev) => [...prev, localComment])
       }
+      setComments((prev) => [...prev, addedComment])
+      setTimeline((prev) => [
+        ...prev,
+        {
+          id: addedComment.id,
+          timestamp: addedComment.created_at,
+          action: 'Comment added',
+          actor: addedComment.author,
+          details: addedComment.content,
+        },
+      ])
       setNewComment('')
       toast.success('Comment added')
     } catch (error) {

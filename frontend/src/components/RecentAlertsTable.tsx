@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { ChevronDown, User } from 'lucide-react'
 import clsx from 'clsx'
 import { Severity, Analyst } from '../types'
-import { fetchAnalysts } from '../api'
+import { fetchAnalysts, updateEventStatus } from '../api'
 
 interface AlertRow {
     id: string
@@ -40,6 +40,7 @@ export default function RecentAlertsTable({
 }: RecentAlertsTableProps) {
     const [assignDropdownId, setAssignDropdownId] = useState<string | null>(null)
     const [quickAssignOptions, setQuickAssignOptions] = useState<Analyst[]>([])
+    const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>({})
 
     useEffect(() => {
         fetchAnalysts()
@@ -65,10 +66,14 @@ export default function RecentAlertsTable({
         setAssignDropdownId(assignDropdownId === alertId ? null : alertId)
     }
 
-    const handleAssign = (alertId: string, analystName: string) => {
-        // This would call the API to update assignment
-        console.log(`Assigning ${alertId} to ${analystName}`)
+    const handleAssign = async (alertId: string, analystName: string) => {
         setAssignDropdownId(null)
+        try {
+            await updateEventStatus(alertId, { assigned_to: analystName || undefined })
+            setAssigneeOverrides((prev) => ({ ...prev, [alertId]: analystName }))
+        } catch {
+            // silently ignore — row will revert to original assignee on next data refresh
+        }
     }
 
     return (
@@ -148,13 +153,13 @@ export default function RecentAlertsTable({
                                             onClick={(e) => handleAssigneeClick(e, alert.id)}
                                             className={clsx(
                                                 'flex items-center gap-2 px-2 py-1 rounded transition-colors',
-                                                alert.assignee
+                                                (assigneeOverrides[alert.id] ?? alert.assignee)
                                                     ? 'text-slate-300 hover:bg-slate-700'
                                                     : 'text-slate-600 hover:text-slate-400 hover:bg-slate-700'
                                             )}
                                         >
                                             <User className="w-4 h-4" />
-                                            <span>{alert.assignee || 'Unassigned'}</span>
+                                            <span>{assigneeOverrides[alert.id] ?? alert.assignee ?? 'Unassigned'}</span>
                                             <ChevronDown className="w-3 h-3" />
                                         </button>
 

@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
-import { MapPin, AlertTriangle } from 'lucide-react'
-import { fetchSitesSummary } from '../api'
-import { SiteSummary } from '../types'
+import { useNavigate } from 'react-router-dom'
+import { MapPin, AlertTriangle, Monitor } from 'lucide-react'
+import { fetchSitesSummary, fetchAssets } from '../api'
+import { SiteSummary, GLPIAsset } from '../types'
 
 export default function Sites() {
+  const navigate = useNavigate()
   const [sites, setSites] = useState<SiteSummary[]>([])
+  const [assets, setAssets] = useState<GLPIAsset[]>([])
   const [loading, setLoading] = useState(true)
+  const [assetsLoading, setAssetsLoading] = useState(true)
+  const [assetsError, setAssetsError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadSites() {
@@ -18,7 +23,19 @@ export default function Sites() {
         setLoading(false)
       }
     }
+    async function loadAssets() {
+      try {
+        const data = await fetchAssets()
+        setAssets(data.assets)
+      } catch (error) {
+        console.error('Failed to load GLPI assets:', error)
+        setAssetsError('Failed to load GLPI assets')
+      } finally {
+        setAssetsLoading(false)
+      }
+    }
     loadSites()
+    loadAssets()
   }, [])
 
   if (loading) {
@@ -47,6 +64,50 @@ export default function Sites() {
           ))}
         </div>
       )}
+
+      {/* GLPI Asset Inventory */}
+      <div className="flex items-center justify-between mt-10 mb-4">
+        <h2 className="text-xl font-bold">GLPI Asset Inventory</h2>
+        <p className="text-gray-400">
+          {assetsLoading ? '...' : `${assets.length} asset${assets.length !== 1 ? 's' : ''}`}
+        </p>
+      </div>
+
+      {assetsLoading ? (
+        <div className="text-center py-8 text-gray-400">Loading assets...</div>
+      ) : assetsError ? (
+        <div className="text-center py-8 text-red-400">{assetsError}</div>
+      ) : assets.length === 0 ? (
+        <div className="text-center py-8 text-gray-400">
+          <Monitor className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>No GLPI assets found.</p>
+        </div>
+      ) : (
+        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-700 text-gray-400 text-left">
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Comment</th>
+                <th className="px-4 py-3 font-medium">Serial</th>
+                <th className="px-4 py-3 font-medium">Entity</th>
+                <th className="px-4 py-3 font-medium">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assets.map((asset) => (
+                <tr key={asset.id} onClick={() => navigate('/events', { state: { site_id: asset.name } })} className="border-b border-gray-700/50 hover:bg-gray-700/30 cursor-pointer">
+                  <td className="px-4 py-3 font-medium text-blue-400">{asset.name}</td>
+                  <td className="px-4 py-3 text-gray-300 max-w-xs truncate">{asset.comment || '—'}</td>
+                  <td className="px-4 py-3 text-gray-300 font-mono text-xs">{asset.serial || '—'}</td>
+                  <td className="px-4 py-3 text-gray-300">{asset.entities_id}</td>
+                  <td className="px-4 py-3 text-gray-400">{new Date(asset.date_creation).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -56,11 +117,13 @@ interface SiteCardProps {
 }
 
 function SiteCard({ site }: SiteCardProps) {
+  const navigate = useNavigate()
   const hasHighSeverity = site.critical > 0 || site.high > 0
 
   return (
     <div
-      className={`bg-gray-800 rounded-lg p-4 border ${
+      onClick={() => navigate('/events', { state: { site_id: site.site_id } })}
+      className={`bg-gray-800 rounded-lg p-4 border cursor-pointer hover:border-blue-500/50 transition-colors ${
         hasHighSeverity ? 'border-red-600/50' : 'border-gray-700'
       }`}
     >

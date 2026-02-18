@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { fetchEvents, updateEventStatus } from '../api'
 import { SecurityEvent, EventStatus } from '../types'
@@ -11,21 +12,25 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 export default function Events() {
+  const location = useLocation()
+  const locationState = location.state as { site_id?: string; severity?: string } | null
+
   const [events, setEvents] = useState<SecurityEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null)
 
-  // Filters
+  // Filters — pre-populated from navigation state (e.g. from endpoint "View Logs")
   const [search, setSearch] = useState('')
-  const [severityFilter, setSeverityFilter] = useState<string>('')
+  const [siteIdFilter] = useState<string>(locationState?.site_id ?? '')
+  const [severityFilter, setSeverityFilter] = useState<string>(locationState?.severity ?? '')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [sourceFilter, setSourceFilter] = useState<string>('')
 
   useEffect(() => {
     loadEvents()
-  }, [page, severityFilter, statusFilter, sourceFilter])
+  }, [page, search, siteIdFilter, severityFilter, statusFilter, sourceFilter])
 
   async function loadEvents() {
     setLoading(true)
@@ -33,6 +38,7 @@ export default function Events() {
       const data = await fetchEvents({
         page,
         per_page: 20,
+        site_id: siteIdFilter || undefined,
         severity: severityFilter || undefined,
         status: statusFilter || undefined,
         source: sourceFilter || undefined,

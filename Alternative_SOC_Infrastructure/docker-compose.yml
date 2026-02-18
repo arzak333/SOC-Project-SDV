@@ -1,0 +1,74 @@
+﻿services:
+  # Firewall / Gateway
+  firewall:
+    image: alpine:latest
+    container_name: firewall
+    hostname: firewall
+    networks:
+      - external_net
+      - internal_net
+    privileged: true
+    command: sh -c "apk add --no-cache iptables iproute2 bash && tail -f /dev/null"
+    volumes:
+      - ./logs/firewall:/var/log
+
+  # Serveur Web
+  server:
+    image: nginx:alpine
+    container_name: server
+    hostname: server
+    networks:
+      - internal_net
+    ports:
+      - "8080:80"
+    volumes:
+      - ./logs/nginx:/var/log/nginx
+
+  # PC Client 1
+  pc1:
+    image: alpine:latest
+    container_name: pc1
+    hostname: pc1
+    networks:
+      - internal_net
+    command: sh -c "apk add --no-cache openssh && ssh-keygen -A && echo 'root:password123' | chpasswd && /usr/sbin/sshd -D -e"
+    volumes:
+      - ./logs/pc1:/var/log
+
+  # PC Client 2
+  pc2:
+    image: alpine:latest
+    container_name: pc2
+    hostname: pc2
+    networks:
+      - internal_net
+    command: sh -c "apk add --no-cache openssh && ssh-keygen -A && echo 'root:admin' | chpasswd && /usr/sbin/sshd -D -e"
+    volumes:
+      - ./logs/pc2:/var/log
+
+  # PC Client 3
+  pc3:
+    image: alpine:latest
+    container_name: pc3
+    hostname: pc3
+    networks:
+      - internal_net
+    command: sh -c "apk add --no-cache openssh && ssh-keygen -A && echo 'root:12345' | chpasswd && /usr/sbin/sshd -D -e"
+    volumes:
+      - ./logs/pc3:/var/log
+
+  # Attacker placeholder
+  attacker:
+    image: alpine:latest
+    container_name: attacker
+    hostname: attacker
+    networks:
+      - external_net
+    command: tail -f /dev/null
+
+networks:
+  external_net:
+    driver: bridge
+  
+  internal_net:
+    driver: bridge

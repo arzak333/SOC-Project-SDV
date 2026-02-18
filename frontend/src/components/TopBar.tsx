@@ -1,8 +1,11 @@
-import { Bell, User, ChevronDown, Sun, Moon, LogOut } from 'lucide-react'
-import { useState } from 'react'
+import { Bell, User, ChevronDown, Sun, Moon, LogOut, AlertTriangle, AlertCircle, Info } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { fetchEvents } from '../api'
+import { SecurityEvent } from '../types'
 
 export type UserRole = 'Analyst' | 'Supervisor' | 'Admin'
 
@@ -27,7 +30,22 @@ export default function TopBar({
 }: TopBarProps) {
     const { theme, toggleTheme } = useTheme()
     const { user, logout } = useAuth()
+    const navigate = useNavigate()
     const [showUserMenu, setShowUserMenu] = useState(false)
+    const [showNotifications, setShowNotifications] = useState(false)
+    const [notifications, setNotifications] = useState<SecurityEvent[]>([])
+
+    useEffect(() => {
+        fetchEvents({ severity: 'critical,high', status: 'new', limit: 8 })
+            .then((data) => setNotifications(data.events))
+            .catch(() => setNotifications([]))
+    }, [])
+
+    const severityIcon = (s: string) => {
+        if (s === 'critical') return <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+        if (s === 'high') return <AlertCircle className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+        return <Info className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+    }
 
     const statusColors = {
         online: 'bg-green-500',
@@ -97,14 +115,55 @@ export default function TopBar({
                 </button>
 
                 {/* Notifications */}
-                <button className="relative p-2 hover:bg-slate-800 rounded-lg transition-colors">
-                    <Bell className="w-5 h-5 text-slate-400" />
-                    {alertCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                            {alertCount > 9 ? '9+' : alertCount}
-                        </span>
+                <div className="relative">
+                    <button
+                        onClick={() => setShowNotifications(!showNotifications)}
+                        className="relative p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                    >
+                        <Bell className="w-5 h-5 text-slate-400" />
+                        {notifications.length > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {notifications.length > 9 ? '9+' : notifications.length}
+                            </span>
+                        )}
+                    </button>
+
+                    {showNotifications && (
+                        <>
+                            <div className="fixed inset-0 z-10" onClick={() => setShowNotifications(false)} />
+                            <div className="absolute right-0 top-full mt-2 w-80 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden">
+                                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+                                    <span className="text-sm font-semibold text-slate-200">Recent Alerts</span>
+                                    <button
+                                        onClick={() => { setShowNotifications(false); navigate('/events', { state: { severity: 'critical,high' } }) }}
+                                        className="text-xs text-blue-400 hover:text-blue-300"
+                                    >
+                                        View all
+                                    </button>
+                                </div>
+                                {notifications.length === 0 ? (
+                                    <div className="px-4 py-6 text-center text-sm text-slate-500">No new alerts</div>
+                                ) : (
+                                    <div className="max-h-72 overflow-y-auto">
+                                        {notifications.map((event) => (
+                                            <div
+                                                key={event.id}
+                                                onClick={() => { setShowNotifications(false); navigate('/events', { state: { severity: 'critical,high' } }) }}
+                                                className="flex items-start gap-3 px-4 py-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/50 last:border-0"
+                                            >
+                                                {severityIcon(event.severity)}
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-medium text-slate-200 truncate">{event.title}</p>
+                                                    <p className="text-xs text-slate-500 truncate">{event.site_id || event.source}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     )}
-                </button>
+                </div>
 
                 {/* User Profile */}
                 <div className="relative">

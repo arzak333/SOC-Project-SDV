@@ -97,6 +97,33 @@ services:
       - infra-net
 
   # ============================================================
+  # FIREWALL (Alpine iptables gateway between DMZ and infra-net)
+  # ============================================================
+
+  firewall:
+    build:
+      context: ./firewall
+      dockerfile: Dockerfile
+    hostname: firewall-gw
+    environment:
+      WAZUH_MANAGER: wazuh-manager
+      ENDPOINT_NAME: firewall-gw
+      SITE_ID: AUDIO_001
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    sysctls:
+      - net.ipv4.ip_forward=1
+    networks:
+      - dmz-net
+      - infra-net
+    volumes:
+      - firewall_logs:/var/log/firewall
+    depends_on:
+      - wazuh-manager
+    restart: unless-stopped
+
+  # ============================================================
   # SIMULATED ENDPOINTS (Linux containers acting as workstations)
   # ============================================================
 
@@ -168,6 +195,11 @@ services:
 # ============================================================
 
 networks:
+  dmz-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24
   infra-net:
     driver: bridge
   soc-network:
@@ -194,3 +226,4 @@ volumes:
   wazuh_dashboard_custom:
   glpi_db_data:
   glpi_data:
+  firewall_logs:

@@ -1,0 +1,69 @@
+﻿filebeat.inputs:
+  # Logs Nginx (Serveur Web)
+  - type: log
+    enabled: true
+    paths:
+      - /logs/nginx/access.log
+      - /logs/nginx/error.log
+    fields:
+      source: "server"
+      service: "nginx"
+    fields_under_root: true
+
+  # Logs SSH PC1
+  - type: log
+    enabled: true
+    paths:
+      - /logs/pc1/auth.log
+    fields:
+      source: "pc1"
+      service: "ssh"
+    fields_under_root: true
+
+  # Logs SSH PC2
+  - type: log
+    enabled: true
+    paths:
+      - /logs/pc2/auth.log
+    fields:
+      source: "pc2"
+      service: "ssh"
+    fields_under_root: true
+
+  # Logs SSH PC3
+  - type: log
+    enabled: true
+    paths:
+      - /logs/pc3/auth.log
+    fields:
+      source: "pc3"
+      service: "ssh"
+    fields_under_root: true
+
+  # Logs Firewall
+  - type: log
+    enabled: true
+    paths:
+      - /logs/firewall/iptables.log
+    fields:
+      source: "firewall"
+      service: "iptables"
+    fields_under_root: true
+
+processors:
+  - add_host_metadata: ~
+  - add_docker_metadata: ~
+
+# Output vers votre SOC
+# DÃ©commenter et configurer selon votre SOC
+
+# output.elasticsearch:
+#   hosts: ["https://your-soc.example.com:9200"]
+#   username: "filebeat"
+#   password: "your_password"
+
+output.file:
+  path: "/logs/filebeat"
+  filename: filebeat-output.json
+
+logging.level: info
