@@ -18,6 +18,7 @@ import LoadingSpinner from './LoadingSpinner'
 import { toast } from './Toast'
 import { SecurityEvent, Severity, EventStatus, AlertComment, Analyst, TimelineEvent } from '../types'
 import { fetchEvent, updateEventStatus, fetchEventComments, addEventComment, fetchAnalysts } from '../api'
+import { useRole } from '../context/RoleContext'
 
 interface AlertDetailModalProps {
   eventId: string | null
@@ -80,6 +81,7 @@ export default function AlertDetailModal({
   onClose,
   onUpdate,
 }: AlertDetailModalProps) {
+  const { canAssign } = useRole()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [event, setEvent] = useState<SecurityEvent | null>(null)
   const [loading, setLoading] = useState(true)
@@ -341,19 +343,21 @@ export default function AlertDetailModal({
                         {event.assigned_to || 'Unassigned'}
                       </span>
                     </div>
-                    <select
-                      className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value=""
-                      onChange={(e) => handleAssign(e.target.value)}
-                      disabled={saving}
-                    >
-                      <option value="">Assign to...</option>
-                      {analysts.map((analyst) => (
-                        <option key={analyst.id} value={analyst.id}>
-                          {analyst.name} ({analyst.role})
-                        </option>
-                      ))}
-                    </select>
+                    {canAssign && (
+                      <select
+                        className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value=""
+                        onChange={(e) => handleAssign(e.target.value)}
+                        disabled={saving}
+                      >
+                        <option value="">Assign to...</option>
+                        {analysts.map((analyst) => (
+                          <option key={analyst.id} value={analyst.id}>
+                            {analyst.name} ({analyst.role})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 

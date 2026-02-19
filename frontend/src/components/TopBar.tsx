@@ -4,32 +4,30 @@ import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { useRole, JwtRole } from '../context/RoleContext'
 import { fetchEvents } from '../api'
 import { SecurityEvent } from '../types'
-
-export type UserRole = 'Analyst' | 'Supervisor' | 'Admin'
 
 interface TopBarProps {
     systemStatus?: 'online' | 'offline' | 'degraded'
     monitoringCount?: number
-    currentRole: UserRole
-    onRoleChange: (role: UserRole) => void
-    userName?: string
     alertCount?: number
 }
 
-const roles: UserRole[] = ['Analyst', 'Supervisor', 'Admin']
+const roles: { value: JwtRole; label: string }[] = [
+    { value: 'analyst', label: 'Analyst' },
+    { value: 'supervisor', label: 'Supervisor' },
+    { value: 'admin', label: 'Admin' },
+]
 
 export default function TopBar({
     systemStatus = 'online',
     monitoringCount = 32,
-    currentRole,
-    onRoleChange,
-    userName = 'Demo User',
     alertCount = 0,
 }: TopBarProps) {
     const { theme, toggleTheme } = useTheme()
     const { user, logout } = useAuth()
+    const { effectiveRole, setEffectiveRole } = useRole()
     const navigate = useNavigate()
     const [showUserMenu, setShowUserMenu] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
@@ -76,24 +74,26 @@ export default function TopBar({
 
             {/* Right: Role switcher, notifications, user */}
             <div className="flex items-center gap-4">
-                {/* Role Switcher */}
-                <div className="flex items-center gap-1 text-sm">
-                    <span className="text-slate-400 mr-2">VIEW AS</span>
-                    {roles.map((role) => (
-                        <button
-                            key={role}
-                            onClick={() => onRoleChange(role)}
-                            className={clsx(
-                                'px-3 py-1.5 rounded-md transition-colors',
-                                currentRole === role
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                            )}
-                        >
-                            {role}
-                        </button>
-                    ))}
-                </div>
+                {/* Role Switcher — admin only */}
+                {user?.role === 'admin' && (
+                    <div className="flex items-center gap-1 text-sm">
+                        <span className="text-slate-400 mr-2">VIEW AS</span>
+                        {roles.map((role) => (
+                            <button
+                                key={role.value}
+                                onClick={() => setEffectiveRole(role.value)}
+                                className={clsx(
+                                    'px-3 py-1.5 rounded-md transition-colors',
+                                    effectiveRole === role.value
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                                )}
+                            >
+                                {role.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {/* Theme Toggle - Glass Effect */}
                 <button
@@ -176,7 +176,7 @@ export default function TopBar({
                         </div>
                         <div className="text-left">
                             <p className="text-sm font-medium text-slate-200">{user?.username || userName}</p>
-                            <p className="text-xs text-slate-500 capitalize">{user?.role || currentRole}</p>
+                            <p className="text-xs text-slate-500 capitalize">{effectiveRole}</p>
                         </div>
                         <ChevronDown className={clsx('w-4 h-4 text-slate-500 transition-transform', showUserMenu && 'rotate-180')} />
                     </button>

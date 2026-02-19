@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useRole } from '../context/RoleContext'
 import {
   BookOpen,
   Plus,
@@ -66,6 +67,7 @@ const AVAILABLE_ACTIONS = [
 ]
 
 export default function Playbooks() {
+  const { canManagePlaybooks } = useRole()
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
   const [executions, setExecutions] = useState<PlaybookExecution[]>([])
   const [activeExecutions, setActiveExecutions] = useState<PlaybookExecution[]>([])
@@ -245,16 +247,18 @@ export default function Playbooks() {
             <History className="w-4 h-4" />
             History
           </button>
-          <button
-            onClick={() => {
-              setEditingPlaybook(null)
-              setShowForm(true)
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Playbook
-          </button>
+          {canManagePlaybooks && (
+            <button
+              onClick={() => {
+                setEditingPlaybook(null)
+                setShowForm(true)
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New Playbook
+            </button>
+          )}
         </div>
       </div>
 
@@ -806,6 +810,7 @@ interface PlaybookDetailProps {
 }
 
 function PlaybookDetail({ playbook, onEdit, onDelete, onDuplicate, onToggle, onArchive, onRun, onClose }: PlaybookDetailProps) {
+  const { canManagePlaybooks } = useRole()
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
 
   function toggleStep(id: string) {
@@ -849,57 +854,61 @@ function PlaybookDetail({ playbook, onEdit, onDelete, onDuplicate, onToggle, onA
               Run Now
             </button>
           )}
-          <button
-            onClick={onEdit}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm"
-            style={{ backgroundColor: 'var(--color-bg-tertiary)', color: 'var(--color-text-primary)' }}
-          >
-            <Edit2 className="w-4 h-4" />
-            Edit
-          </button>
-          <button
-            onClick={onDuplicate}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm"
-            style={{ backgroundColor: 'var(--color-bg-tertiary)', color: 'var(--color-text-primary)' }}
-          >
-            <Copy className="w-4 h-4" />
-            Duplicate
-          </button>
-          <button
-            onClick={onToggle}
-            className={clsx(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm',
-              playbook.status === 'active' ? 'bg-yellow-600/20 text-yellow-400' : 'bg-green-600/20 text-green-400'
-            )}
-          >
-            {playbook.status === 'active' ? (
-              <>
-                <Pause className="w-4 h-4" />
-                Disable
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                Activate
-              </>
-            )}
-          </button>
-          {playbook.status !== 'archived' && (
-            <button
-              onClick={onArchive}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm bg-slate-600/20"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              <Archive className="w-4 h-4" />
-              Archive
-            </button>
+          {canManagePlaybooks && (
+            <>
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm"
+                style={{ backgroundColor: 'var(--color-bg-tertiary)', color: 'var(--color-text-primary)' }}
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit
+              </button>
+              <button
+                onClick={onDuplicate}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm"
+                style={{ backgroundColor: 'var(--color-bg-tertiary)', color: 'var(--color-text-primary)' }}
+              >
+                <Copy className="w-4 h-4" />
+                Duplicate
+              </button>
+              <button
+                onClick={onToggle}
+                className={clsx(
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm',
+                  playbook.status === 'active' ? 'bg-yellow-600/20 text-yellow-400' : 'bg-green-600/20 text-green-400'
+                )}
+              >
+                {playbook.status === 'active' ? (
+                  <>
+                    <Pause className="w-4 h-4" />
+                    Disable
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Activate
+                  </>
+                )}
+              </button>
+              {playbook.status !== 'archived' && (
+                <button
+                  onClick={onArchive}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm bg-slate-600/20"
+                  style={{ color: 'var(--color-text-muted)' }}
+                >
+                  <Archive className="w-4 h-4" />
+                  Archive
+                </button>
+              )}
+              <button
+                onClick={onDelete}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm bg-red-600/20 text-red-400"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
           )}
-          <button
-            onClick={onDelete}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm bg-red-600/20 text-red-400"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useRole } from '../context/RoleContext'
+import { Search, Filter, ChevronLeft, ChevronRight, LayoutList, LayoutGrid } from 'lucide-react'
 import { fetchEvents, updateEventStatus } from '../api'
 import { SecurityEvent, EventStatus } from '../types'
 import EventCard from '../components/EventCard'
@@ -12,6 +13,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 export default function Events() {
+  const { canExport } = useRole()
   const location = useLocation()
   const locationState = location.state as { site_id?: string; severity?: string } | null
 
@@ -22,6 +24,7 @@ export default function Events() {
   const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null)
 
   // Filters — pre-populated from navigation state (e.g. from endpoint "View Logs")
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [search, setSearch] = useState('')
   const [siteIdFilter] = useState<string>(locationState?.site_id ?? '')
   const [severityFilter, setSeverityFilter] = useState<string>(locationState?.severity ?? '')
@@ -76,27 +79,48 @@ export default function Events() {
       {/* Events List */}
       <div className="flex-1">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Security Events</h1>
-          <ExportButton
-            onExport={(format) => {
-              const stats = {
-                total: events.length,
-                critical: events.filter((e) => e.severity === 'critical').length,
-                high: events.filter((e) => e.severity === 'high').length,
-                medium: events.filter((e) => e.severity === 'medium').length,
-                low: events.filter((e) => e.severity === 'low').length,
-              }
-              if (format === 'csv') {
-                exportEventsToCSV(events, `security-events-${new Date().toISOString().split('T')[0]}`)
-              } else if (format === 'pdf') {
-                exportEventsReport(events, stats)
-              } else if (format === 'json') {
-                exportToJSON(events, `security-events-${new Date().toISOString().split('T')[0]}`)
-              }
-            }}
-            formats={['csv', 'pdf', 'json']}
-            disabled={events.length === 0}
-          />
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold">Security Events</h1>
+            {/* View mode toggle */}
+            <div className="flex items-center gap-1 p-1 bg-gray-800 border border-gray-700 rounded-lg">
+              <button
+                onClick={() => setViewMode('list')}
+                title="List view"
+                className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                <LayoutList className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                title="Grid view (4 per row)"
+                className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          {canExport && (
+            <ExportButton
+              onExport={(format) => {
+                const stats = {
+                  total: events.length,
+                  critical: events.filter((e) => e.severity === 'critical').length,
+                  high: events.filter((e) => e.severity === 'high').length,
+                  medium: events.filter((e) => e.severity === 'medium').length,
+                  low: events.filter((e) => e.severity === 'low').length,
+                }
+                if (format === 'csv') {
+                  exportEventsToCSV(events, `security-events-${new Date().toISOString().split('T')[0]}`)
+                } else if (format === 'pdf') {
+                  exportEventsReport(events, stats)
+                } else if (format === 'json') {
+                  exportToJSON(events, `security-events-${new Date().toISOString().split('T')[0]}`)
+                }
+              }}
+              formats={['csv', 'pdf', 'json']}
+              disabled={events.length === 0}
+            />
+          )}
         </div>
 
         {/* Filters */}
@@ -132,7 +156,7 @@ export default function Events() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
             >
-              <option value="">All Statuses</option>
+              <option value="">All Status</option>
               <option value="new">New</option>
               <option value="investigating">Investigating</option>
               <option value="resolved">Resolved</option>
@@ -170,7 +194,7 @@ export default function Events() {
         ) : events.length === 0 ? (
           <div className="text-center py-12 text-gray-400">No events found</div>
         ) : (
-          <div className="space-y-2">
+          <div className={viewMode === 'grid' ? 'grid grid-cols-2 xl:grid-cols-4 gap-3' : 'space-y-2'}>
             {events.map((event) => (
               <EventCard
                 key={event.id}

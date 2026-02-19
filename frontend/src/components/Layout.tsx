@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react'
+import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Shield,
@@ -11,7 +11,7 @@ import {
   WifiOff,
 } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
-import TopBar, { UserRole } from './TopBar'
+import TopBar from './TopBar'
 import clsx from 'clsx'
 
 interface LayoutProps {
@@ -29,7 +29,6 @@ const navItems = [
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const { connected, alerts } = useSocket()
-  const [currentRole, setCurrentRole] = useState<UserRole>('Analyst')
 
   return (
     <div className="min-h-screen flex transition-colors duration-300" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
@@ -109,9 +108,6 @@ export default function Layout({ children }: LayoutProps) {
         <TopBar
           systemStatus={connected ? 'online' : 'offline'}
           monitoringCount={32}
-          currentRole={currentRole}
-          onRoleChange={setCurrentRole}
-          userName="Demo User"
           alertCount={alerts.length}
         />
 

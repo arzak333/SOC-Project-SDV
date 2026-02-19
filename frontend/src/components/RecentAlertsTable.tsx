@@ -3,6 +3,7 @@ import { ChevronDown, User } from 'lucide-react'
 import clsx from 'clsx'
 import { Severity, Analyst } from '../types'
 import { fetchAnalysts, updateEventStatus } from '../api'
+import { useRole } from '../context/RoleContext'
 
 interface AlertRow {
     id: string
@@ -38,6 +39,7 @@ export default function RecentAlertsTable({
     filteredSource,
     filterLabel,
 }: RecentAlertsTableProps) {
+    const { canAssign } = useRole()
     const [assignDropdownId, setAssignDropdownId] = useState<string | null>(null)
     const [quickAssignOptions, setQuickAssignOptions] = useState<Analyst[]>([])
     const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>({})
@@ -149,43 +151,50 @@ export default function RecentAlertsTable({
                                         {alert.time}
                                     </td>
                                     <td className="py-3 relative assignee-dropdown">
-                                        <button
-                                            onClick={(e) => handleAssigneeClick(e, alert.id)}
-                                            className={clsx(
-                                                'flex items-center gap-2 px-2 py-1 rounded transition-colors',
-                                                (assigneeOverrides[alert.id] ?? alert.assignee)
-                                                    ? 'text-slate-300 hover:bg-slate-700'
-                                                    : 'text-slate-600 hover:text-slate-400 hover:bg-slate-700'
-                                            )}
-                                        >
-                                            <User className="w-4 h-4" />
-                                            <span>{assigneeOverrides[alert.id] ?? alert.assignee ?? 'Unassigned'}</span>
-                                            <ChevronDown className="w-3 h-3" />
-                                        </button>
-
-                                        {/* Dropdown menu */}
-                                        {assignDropdownId === alert.id && (
-                                            <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
-                                                <div className="py-1">
-                                                    {quickAssignOptions.map((analyst) => (
-                                                        <button
-                                                            key={analyst.id}
-                                                            onClick={() => handleAssign(alert.id, analyst.name)}
-                                                            className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 transition-colors"
-                                                        >
-                                                            {analyst.name}
-                                                        </button>
-                                                    ))}
-                                                    <div className="border-t border-slate-700 mt-1 pt-1">
-                                                        <button
-                                                            onClick={() => handleAssign(alert.id, '')}
-                                                            className="w-full px-4 py-2 text-left text-sm text-slate-500 hover:bg-slate-700 transition-colors"
-                                                        >
-                                                            Unassign
-                                                        </button>
+                                        {canAssign ? (
+                                            <>
+                                                <button
+                                                    onClick={(e) => handleAssigneeClick(e, alert.id)}
+                                                    className={clsx(
+                                                        'flex items-center gap-2 px-2 py-1 rounded transition-colors',
+                                                        (assigneeOverrides[alert.id] ?? alert.assignee)
+                                                            ? 'text-slate-300 hover:bg-slate-700'
+                                                            : 'text-slate-600 hover:text-slate-400 hover:bg-slate-700'
+                                                    )}
+                                                >
+                                                    <User className="w-4 h-4" />
+                                                    <span>{assigneeOverrides[alert.id] ?? alert.assignee ?? 'Unassigned'}</span>
+                                                    <ChevronDown className="w-3 h-3" />
+                                                </button>
+                                                {assignDropdownId === alert.id && (
+                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
+                                                        <div className="py-1">
+                                                            {quickAssignOptions.map((analyst) => (
+                                                                <button
+                                                                    key={analyst.id}
+                                                                    onClick={() => handleAssign(alert.id, analyst.name)}
+                                                                    className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+                                                                >
+                                                                    {analyst.name}
+                                                                </button>
+                                                            ))}
+                                                            <div className="border-t border-slate-700 mt-1 pt-1">
+                                                                <button
+                                                                    onClick={() => handleAssign(alert.id, '')}
+                                                                    className="w-full px-4 py-2 text-left text-sm text-slate-500 hover:bg-slate-700 transition-colors"
+                                                                >
+                                                                    Unassign
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span className="flex items-center gap-2 px-2 py-1 text-slate-500">
+                                                <User className="w-4 h-4" />
+                                                {alert.assignee ?? 'Unassigned'}
+                                            </span>
                                         )}
                                     </td>
                                 </tr>

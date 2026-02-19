@@ -231,3 +231,83 @@ Added a comprehensive `[data-theme="light"]` override block (no `!important` nee
 ### Files Modified
 - `frontend/src/components/TopBar.tsx` (notification bell dropdown)
 - `frontend/src/index.css` (comprehensive light theme overrides)
+
+## Session — 2026-02-19
+
+### Task 11: Fix Invisible Text in Light Mode (EventCard + StatusBadge)
+
+**Problem**: `text-white` on EventCard titles became invisible on white backgrounds. StatusBadge "Investigating" (bg-purple-600) showed dark text because restore rules were missing.
+
+**Fix**: Added restore rules to `[data-theme="light"]` block in `index.css`:
+```css
+[data-theme="light"] .text-white { color: #0f172a; }
+/* Restore white text on colored backgrounds */
+[data-theme="light"] [class*="bg-blue-"].text-white,
+[data-theme="light"] [class*="bg-red-"].text-white,
+[data-theme="light"] [class*="bg-green-"].text-white,
+[data-theme="light"] [class*="bg-orange-"].text-white,
+[data-theme="light"] [class*="bg-yellow-"].text-white,
+[data-theme="light"] [class*="bg-purple-"].text-white,
+[data-theme="light"] [class*="bg-violet-"].text-white,
+[data-theme="light"] [class*="bg-indigo-"].text-white { color: #ffffff; }
+```
+
+### Task 12: UI Audit
+
+Performed full audit of frontend components. Found:
+- **Dead handlers**: `handleAssign` in RecentAlertsTable was `console.log` only
+- **Mock data**: `generateMockTimeline()` in AlertDetailModal
+- **Stubs**: Quick Actions buttons (Restart Services, Escalate) — left as-is per user choice
+
+### Task 13: Wire Assignment API
+
+**RecentAlertsTable.tsx**
+- `handleAssign` now calls `await updateEventStatus(alertId, { assigned_to: analystName || undefined })`
+- Added `assigneeOverrides` local state for optimistic UI update
+- Row displays `assigneeOverrides[alert.id] ?? alert.assignee ?? 'Unassigned'`
+- Added `canAssign` gate: analysts see read-only assignee, others get the dropdown
+
+### Task 14: Real Timeline in AlertDetailModal
+
+**AlertDetailModal.tsx**
+- Replaced `generateMockTimeline()` with `buildTimelineFromData(event, comments)`
+- Timeline = 1 ingestion entry (event.timestamp) + comments sorted by `created_at`
+- No new API endpoint needed — uses existing comments data already loaded
+
+### Task 15: RBAC System
+
+**New file: `frontend/src/context/RoleContext.tsx`**
+- `JwtRole = 'admin' | 'analyst' | 'supervisor'`
+- `effectiveRole` defaults to `user.role` from JWT
+- `setEffectiveRole()` is a no-op for non-admins (admin-only demo VIEW AS switcher)
+- Permission flags: `canAssign`, `canManageRules`, `canManagePlaybooks`, `canExport` — all false for `analyst`
+
+**Other files updated:**
+- `App.tsx`: wrapped with `<RoleProvider>`
+- `Layout.tsx`: removed local `currentRole` state
+- `TopBar.tsx`: VIEW AS switcher only renders when `user?.role === 'admin'`
+- `Alerts.tsx`: New Rule / Edit / Delete / Duplicate / Toggle gated by `canManageRules`
+- `Playbooks.tsx`: New Playbook / Edit / Delete / Duplicate / Archive / Toggle gated by `canManagePlaybooks`
+- `Events.tsx`: ExportButton gated by `canExport`
+- `RecentAlertsTable.tsx`: assign dropdown gated by `canAssign`
+- `AlertDetailModal.tsx`: assign select gated by `canAssign`
+
+### Task 16: Events Grammar Fix + Display Toggle
+
+**Events.tsx**
+- "All Statuses" → "All Status"
+- Added `viewMode` state (`'list' | 'grid'`)
+- Toggle buttons (LayoutList / LayoutGrid icons) in header next to title
+- Grid mode: `grid grid-cols-2 xl:grid-cols-4 gap-3`; List mode: `space-y-2`
+
+### Files Modified
+- `frontend/src/index.css` (text-white restore rules)
+- `frontend/src/context/RoleContext.tsx` (new)
+- `frontend/src/App.tsx` (RoleProvider)
+- `frontend/src/components/Layout.tsx` (removed role state)
+- `frontend/src/components/TopBar.tsx` (admin-only VIEW AS, useRole)
+- `frontend/src/components/AlertDetailModal.tsx` (real timeline, canAssign gate)
+- `frontend/src/components/RecentAlertsTable.tsx` (assignment API, canAssign gate)
+- `frontend/src/pages/Alerts.tsx` (canManageRules gates)
+- `frontend/src/pages/Playbooks.tsx` (canManagePlaybooks gates)
+- `frontend/src/pages/Events.tsx` (canExport, viewMode toggle, grammar fix)

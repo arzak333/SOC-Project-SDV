@@ -10,6 +10,7 @@ import Login from './pages/Login'
 import { SocketProvider } from './hooks/useSocket'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { RoleProvider } from './context/RoleContext'
 import { SecurityEvent } from './types'
 
 // Protected Route wrapper
@@ -67,7 +68,9 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppRoutes />
+        <RoleProvider>
+          <AppRoutes />
+        </RoleProvider>
       </AuthProvider>
     </ThemeProvider>
   )

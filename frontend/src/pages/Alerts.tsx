@@ -3,6 +3,7 @@ import { Plus, Trash2, Power, PowerOff, Edit2, Copy, AlertTriangle, Shield, Mail
 import { fetchAlertRules, createAlertRule, deleteAlertRule, toggleAlertRule, updateAlertRule } from '../api'
 import { AlertRule } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
+import { useRole } from '../context/RoleContext'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import clsx from 'clsx'
@@ -75,6 +76,7 @@ const RULE_TEMPLATES = [
 ]
 
 export default function Alerts() {
+  const { canManageRules } = useRole()
   const [rules, setRules] = useState<AlertRule[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -297,16 +299,18 @@ export default function Alerts() {
             )}
           </div>
 
-          <button
-            onClick={() => {
-              setEditingRule(null)
-              setShowForm(true)
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Rule
-          </button>
+          {canManageRules && (
+            <button
+              onClick={() => {
+                setEditingRule(null)
+                setShowForm(true)
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New Rule
+            </button>
+          )}
         </div>
       </div>
 
@@ -482,44 +486,48 @@ export default function Alerts() {
                         <ChevronDown className="w-5 h-5" style={{ color: 'var(--color-text-muted)' }} />
                       )}
                     </button>
-                    <button
-                      onClick={() => handleEdit(rule)}
-                      className="p-2 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors"
-                      title="Edit"
-                    >
-                      <Edit2 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDuplicate(rule)}
-                      className="p-2 rounded-lg bg-slate-600/20 hover:bg-slate-600/30 transition-colors"
-                      style={{ color: 'var(--color-text-muted)' }}
-                      title="Duplicate"
-                    >
-                      <Copy className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleToggle(rule.id)}
-                      className={clsx(
-                        'p-2 rounded-lg transition-colors',
-                        rule.enabled
-                          ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                          : 'bg-gray-600/20 text-gray-400 hover:bg-gray-600/30'
-                      )}
-                      title={rule.enabled ? 'Disable' : 'Enable'}
-                    >
-                      {rule.enabled ? (
-                        <Power className="w-5 h-5" />
-                      ) : (
-                        <PowerOff className="w-5 h-5" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(rule.id)}
-                      className="p-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    {canManageRules && (
+                      <>
+                        <button
+                          onClick={() => handleEdit(rule)}
+                          className="p-2 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDuplicate(rule)}
+                          className="p-2 rounded-lg bg-slate-600/20 hover:bg-slate-600/30 transition-colors"
+                          style={{ color: 'var(--color-text-muted)' }}
+                          title="Duplicate"
+                        >
+                          <Copy className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => handleToggle(rule.id)}
+                          className={clsx(
+                            'p-2 rounded-lg transition-colors',
+                            rule.enabled
+                              ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                              : 'bg-gray-600/20 text-gray-400 hover:bg-gray-600/30'
+                          )}
+                          title={rule.enabled ? 'Disable' : 'Enable'}
+                        >
+                          {rule.enabled ? (
+                            <Power className="w-5 h-5" />
+                          ) : (
+                            <PowerOff className="w-5 h-5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(rule.id)}
+                          className="p-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
