@@ -14,7 +14,9 @@ class PlaybookRunner:
         self.execution_id = execution_id
 
     def get_execution(self) -> PlaybookExecution:
-        return PlaybookExecution.query.get(self.execution_id)
+        import uuid
+
+        return PlaybookExecution.query.get(uuid.UUID(self.execution_id))
 
     def run_step(self, step_index: int) -> dict:
         """
@@ -65,6 +67,8 @@ class PlaybookRunner:
                 status = "completed"
             elif step_type == "manual":
                 # Manual steps need human intervention. We pause execution here.
+                # Must change it back to pending
+                self._update_step_status(execution, step_index, "pending")
                 return {
                     "status": "pending",
                     "result": "Waiting for manual approval",

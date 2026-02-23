@@ -64,20 +64,22 @@ docker compose down && docker compose up -d       # Full restart
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Frontend (React)                             │
-│  Dashboard │ Events │ Alerts │ Playbooks │ Sites                │
-│  Port: 3000                                                      │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ REST API + WebSocket
-┌──────────────────────────┴──────────────────────────────────────┐
-│                     Backend (Flask)                              │
-│  /api/events │ /api/ingest │ /api/dashboard │ /api/alerts       │
-│  Port: 5000                                                      │
-└───────┬─────────────────┬─────────────────┬─────────────────────┘
-        │                 │                 │
-   PostgreSQL          Redis           Celery
-   Port: 5432       Port: 6379      (Alert Engine)
+                                              ┌──────────────────────────────┐
+                                              │   INFRASTRUCTURE (infra/)     │
+                                              │                              │
+┌──────────────────────────────────────┐      │  endpoint-pc-01 ─┐           │
+│         Frontend (React) :3000        │      │  endpoint-pc-02 ─┤→ Wazuh   │
+│  Dashboard│Events│Alerts│Playbooks    │      │                  │  Agents   │
+└─────────────────┬────────────────────┘      │                  ▼           │
+                  │ WebSocket + REST           │           Wazuh Manager      │
+┌─────────────────┴────────────────────┐      │            │         │       │
+│         Backend (Flask) :5000         │◄─────│── webhook ─┘   Wazuh Dash.  │
+│  /api/ingest│events│dashboard│alerts  │      │                 :4443       │
+│  /api/endpoints│analysts│assets ──────│─────►│── GLPI :8080               │
+└──┬──────────────┬──────────────┬─────┘      └──────────────────────────────┘
+   │              │              │
+PostgreSQL     Redis         Celery
+(Events DB)  (Task Queue)  (Alert Engine)
 ```
 
 ## Project Structure

@@ -39,6 +39,12 @@ This file tracks all features implemented in the AudioSOC project.
 - Site summary statistics
 - Site-based WebSocket subscriptions
 
+### Assets & Infrastructure Page (v1.2)
+- Per-site event severity cards (critical / high / medium / low counts)
+- **GLPI Asset Inventory table**: live data from GLPI API
+  - Columns: Name, Comment, Serial, Entity, Created
+  - Loading / empty / error states
+
 ### Event Ingestion (v1.0)
 - REST API for event submission (`POST /api/ingest`)
 - Batch ingestion (`POST /api/ingest/batch`)
@@ -58,15 +64,20 @@ This file tracks all features implemented in the AudioSOC project.
 
 ### User Roles
 - **Admin**: Full system access
-- **Analyst**: Event triage and investigation
+- **Analyst**: Event triage and investigation (read-only on rules/playbooks)
 - **Supervisor**: Team oversight and reporting
+
+### RBAC (RoleContext)
+- `frontend/src/context/RoleContext.tsx` — permission source of truth
+- Permission flags per role: `canAssign`, `canManageRules`, `canManagePlaybooks`, `canExport`
+- Admin-only **VIEW AS** switcher in TopBar for live demos (switch displayed role without re-login)
 
 ### Demo Users
 - Pre-configured demo accounts for testing
 - Quick-fill credentials on login page
 
 ### Frontend Integration
-- AuthContext for state management
+- AuthContext + RoleContext for state management
 - Protected routes
 - Persistent sessions (localStorage)
 - Auto-logout on token expiration
@@ -87,14 +98,12 @@ This file tracks all features implemented in the AudioSOC project.
 
 ### CSV Export
 - Export filtered events to CSV
-- Custom column selection
 - Proper data escaping
 
 ### PDF Reports
-- Browser-based PDF generation
+- Direct PDF download via html2pdf.js (no print dialog)
 - Styled report layout with AudioSOC branding
-- Statistics summary
-- Event table with severity badges
+- Statistics summary + event table with severity badges
 
 ### JSON Export
 - Full data export in JSON format
@@ -134,6 +143,63 @@ This file tracks all features implemented in the AudioSOC project.
 
 ---
 
+## GLPI Integration (v1.2)
+
+### Backend
+- `GET /api/assets` — lists all computers from GLPI API
+- `GET /api/assets/<name>` — single asset lookup by name
+- Proxied through Flask backend (avoids CORS, centralizes auth)
+
+### Frontend
+- `GLPIAsset` TypeScript interface in `types.ts`
+- `fetchAssets()` typed API call in `api.ts`
+- Asset inventory table on Sites page (live data, loading/error states)
+
+---
+
+## Infrastructure Lab (v1.2)
+
+Separate Docker Compose stack in `infrastructure/` simulating the client network.
+
+### Wazuh SIEM Stack (4.14.2)
+- **wazuh-manager**: log collection, agent management, alert rules
+- **wazuh-indexer**: OpenSearch-based log storage
+- **wazuh-dashboard**: web UI at `https://localhost:4443`
+- SOC webhook integration: Wazuh alerts forwarded to `/api/ingest`
+
+### Simulated Endpoints
+- **endpoint-pc-01** / **endpoint-pc-02**: Ubuntu 22.04 + Wazuh agent
+- Log generator producing realistic auth, sudo, cron, file integrity events
+- Logs flow through Wazuh → SOC dashboard
+
+### Firewall Container (v1.2)
+- Ubuntu 22.04 + iptables, Wazuh agent registered as `firewall-gw`
+- Dual-homed: `dmz-net` (172.25.0.0/24, external) + `infra-net` (internal)
+- Real iptables rules: FORWARD DROP default, NAT masquerade, LOGGING chain
+- Log generator writes realistic `IPTables-Dropped` / `HTTP-Access` syslog entries
+- Logs collected by Wazuh → forwarded to SOC
+
+### GLPI (IT Asset Management)
+- `diouxx/glpi` + MariaDB backend
+- Pre-populated with 2 computers (endpoint-pc-01, endpoint-pc-02)
+- REST API consumed by SOC backend
+
+### Network Topology
+```
+[dmz-net 172.25.0.0/24]
+        │
+  [firewall-gw]  ← iptables NAT + Wazuh agent
+        │
+[infra-net]
+   ├── endpoint-pc-01 → Wazuh agent
+   ├── endpoint-pc-02 → Wazuh agent
+   ├── glpi-crm (+ glpi-db)
+   └── wazuh-manager → wazuh-indexer → wazuh-dashboard
+                    └──→ SOC /api/ingest (via soc-network)
+```
+
+---
+
 ## Backend Infrastructure (v1.0)
 
 ### Celery Task Queue
@@ -167,8 +233,8 @@ This file tracks all features implemented in the AudioSOC project.
   - `--count N`: Number of events to generate (default: 1000)
 
 ### Docker Deployment
-- 6-service Docker Compose setup
-- Health checks configured
+- SOC stack: 5-service Docker Compose (`backend`, `frontend`, `db`, `redis`, `celery`)
+- Infrastructure lab: 8-service Docker Compose (`wazuh` ×3, `endpoints` ×2, `glpi` ×2, `firewall`)
 - Environment variable configuration
 - Production-ready with Gunicorn
 
@@ -176,15 +242,13 @@ This file tracks all features implemented in the AudioSOC project.
 
 ## Planned Features (Roadmap)
 
-### v1.2 (Planned)
+### v1.4 (Planned)
 - [ ] Email notifications (SMTP integration)
 - [ ] Webhook notifications
 - [ ] Advanced analytics dashboard
 - [ ] Event correlation
 
 ### v2.0 (Planned)
-- [ ] Real SIEM integration (Wazuh/ELK)
-- [ ] Automated playbook execution
 - [ ] Machine learning anomaly detection
 - [ ] Mobile responsive design
 - [ ] API rate limiting
@@ -196,5 +260,6 @@ This file tracks all features implemented in the AudioSOC project.
 | Version | Date | Description |
 |---------|------|-------------|
 | v1.0 | 2025-01 | Initial release: Dashboard, Events, Alerts, Sites, Multi-site support |
-| v1.1 | 2026-01 | Authentication, Themes, Export, Enhanced Playbooks, Rule templates |
-
+| v1.1 | 2026-01 | Authentication, Themes, Export, Enhanced Playbooks, Rule templates, RBAC |
+| v1.2 | 2026-02 | GLPI integration, Infrastructure lab (Wazuh + endpoints + firewall) |
+| v1.3 | 2026-02 | Automated backend testing (pytest), Automated playbook execution runner |
