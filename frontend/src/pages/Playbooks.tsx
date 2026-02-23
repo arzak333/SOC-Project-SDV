@@ -31,6 +31,7 @@ import clsx from 'clsx'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Playbook, PlaybookStep, PlaybookExecution } from '../types'
+import { useSocket } from '../hooks/useSocket'
 import {
   fetchPlaybooks,
   createPlaybook as apiCreatePlaybook,
@@ -67,6 +68,7 @@ const AVAILABLE_ACTIONS = [
 ]
 
 export default function Playbooks() {
+  const { socket } = useSocket()
   const { canManagePlaybooks } = useRole()
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
   const [executions, setExecutions] = useState<PlaybookExecution[]>([])
@@ -80,6 +82,40 @@ export default function Playbooks() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
+
+  // Listen to socket for real-time execution updates
+  useEffect(() => {
+    if (!socket) return
+
+    const handleExecutionUpdate = (updatedExecution: PlaybookExecution) => {
+      // Update active executions
+      setActiveExecutions(prev => {
+        const isCompleted = ['completed', 'failed', 'aborted'].includes(updatedExecution.status)
+        if (isCompleted) {
+          // It's finished, load history
+          setTimeout(loadData, 500)
+          return prev.filter(e => e.id !== updatedExecution.id)
+        }
+        
+        const exists = prev.find(e => e.id === updatedExecution.id)
+        if (exists) {
+          return prev.map(e => e.id === updatedExecution.id ? updatedExecution : e)
+        } else {
+          return [updatedExecution, ...prev]
+        }
+      })
+
+      // Update selected execution if it's the one we're viewing
+      setSelectedExecution(prev => 
+        prev?.id === updatedExecution.id ? updatedExecution : prev
+      )
+    }
+
+    socket.on('playbook_execution_update', handleExecutionUpdate)
+    return () => {
+      socket.off('playbook_execution_update', handleExecutionUpdate)
+    }
+  }, [socket])
 
   // Load data
   useEffect(() => {
