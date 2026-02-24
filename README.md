@@ -8,9 +8,12 @@ Plateforme de démonstration d'un SOC (Security Operations Center) externalisé 
 |---|---|
 | **Client** | Réseau de ~30 centres d'audioprothésistes en France, sans équipe sécurité interne |
 | **Besoin** | Supervision centralisée de la sécurité informatique de l'ensemble des points de vente |
-| **Projet** | M2 Mastère Cybersécurité - PSB Paris School of Business |
+| **Solution** | SOC externalisé avec collecte multi-source (firewall, IDS, endpoints, AD, email), détection en temps réel, corrélation d'événements et réponse automatisée |
+| **Projet** | Projet de fin d'année - M2 Cybersécurité, SDV Sup de Vinci (2026) |
 
 ## Architecture
+
+> Diagramme complet interactif : [docs/architecture.drawio](docs/architecture.drawio) (ouvrir avec draw.io ou l'extension VS Code)
 
 ```
                                               ┌──────────────────────────────┐
@@ -152,4 +155,4 @@ python3 scripts/log_generator.py --backfill --days 30 --count 2000  # Historique
 
 ## Licence
 
-Projet académique - PSB Paris School of Business - M2 Cybersécurité 2025
+Projet de fin d'année - SDV Sup de Vinci - M2 Cybersécurité 2026
