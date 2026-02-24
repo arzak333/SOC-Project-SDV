@@ -45,3 +45,9 @@ celerybeat.pid
 
 # Claude Code
 .claude/
+
+# AI meta files (local use only)
+CLAUDE.md
+AGENTS.md
+session_log.md
+CHANGELOG.md
