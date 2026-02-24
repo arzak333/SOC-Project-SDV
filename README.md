@@ -13,8 +13,6 @@ Plateforme de démonstration d'un SOC (Security Operations Center) externalisé 
 
 ## Architecture
 
-> Diagramme complet interactif : [docs/architecture.drawio](docs/architecture.drawio) (ouvrir avec draw.io ou l'extension VS Code)
-
 ```
                                               ┌──────────────────────────────┐
                                               │   INFRASTRUCTURE (infra/)     │
