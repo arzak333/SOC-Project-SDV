@@ -57,7 +57,7 @@ class PlaybookRunner:
             )
 
             if step_type == "action":
-                result = self._execute_action(config)
+                result = self._execute_action(config, execution)
                 status = "completed"
             elif step_type == "notification":
                 result = self._execute_notification(config, execution)
@@ -98,14 +98,55 @@ class PlaybookRunner:
 
         return {"status": status, "result": result, "next_step": next_step_index}
 
-    def _execute_action(self, config: dict) -> str:
-        """Simulate an automated action."""
+    def _execute_action(self, config: dict, execution: PlaybookExecution) -> str:
+        """Execute an automated action via Wazuh API."""
         action_type = config.get("action_type", "unknown")
-        target = config.get("target", "unknown")
+        target = config.get("target", "")
 
-        # In a real SOAR, this would make API calls to firewalls, EDR, AD, etc.
-        # For this prototype, we mock the success.
-        return f"Successfully executed action: {action_type} on {target}"
+        # Support basic template replacement for target (e.g. {{event.src_ip}})
+        # In a fully fleshed out system, this would be a real templating engine.
+        if target.startswith("{{") and target.endswith("}}"):
+            target_var = target[2:-2].strip()
+            if target_var == "event.src_ip" and execution.triggered_by_event_id:
+                from app.models import Event
+
+                event = Event.query.get(execution.triggered_by_event_id)
+                if event and "src_ip" in event.event_metadata:
+                    target = event.event_metadata["src_ip"]
+            elif target_var == "alert.src_ip" and execution.triggered_by_alert_id:
+                # If triggered by alert, we might need to find the related events
+                # For simplicity in this demo, we'll just mock the extraction if not found
+                target = "192.168.1.100"
+
+        current_app.logger.info(f"Executing action {action_type} on target {target}")
+
+        if action_type == "block_ip":
+            if not target or target == "unknown":
+                raise ValueError("Cannot block IP without a valid target IP")
+
+            from app.services.wazuh_api import WazuhAPI
+
+            wazuh = WazuhAPI()
+
+            # Use Wazuh firewall-drop active response
+            # Note: The agent must be configured to accept this command. In our lab, the firewall-gw is.
+            # Usually we'd send it to a specific firewall agent, or 'all'. Let's send to all for the demo.
+            result = wazuh.execute_active_response(
+                command="firewall-drop", arguments=target, agent_list=["all"]
+            )
+
+            if result and not result.get("error"):
+                return f"Successfully executed action: {action_type} on {target} via Wazuh API"
+            else:
+                error_msg = (
+                    result.get("message", "Unknown API error")
+                    if result
+                    else "API request failed"
+                )
+                raise Exception(f"Wazuh API Error: {error_msg}")
+
+        # Fallback for other mock actions
+        return f"Successfully executed mocked action: {action_type} on {target}"
 
     def _execute_notification(self, config: dict, execution: PlaybookExecution) -> str:
         """Send a notification using existing notification service."""

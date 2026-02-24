@@ -50,9 +50,17 @@ def test_playbook_runner_single_step(app, init_database):
         init_database.session.add(execution)
         init_database.session.commit()
 
-        # Run step
+        # Run step (Mock Wazuh API to succeed)
         runner = PlaybookRunner(str(execution.id))
-        result = runner.run_step(0)
+
+        # Patch WazuhAPI for this test
+        import unittest.mock
+
+        with unittest.mock.patch(
+            "app.services.wazuh_api.WazuhAPI.execute_active_response"
+        ) as mock_wazuh:
+            mock_wazuh.return_value = {"error": 0, "message": "Success"}
+            result = runner.run_step(0)
 
         assert result["status"] == "completed"
         assert result["next_step"] is None  # Only 1 step, so next is None

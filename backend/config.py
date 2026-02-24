@@ -32,6 +32,11 @@ class Config:
     # Alert settings
     ALERT_CHECK_INTERVAL = 10  # seconds
 
+    # Wazuh SIEM API (for Playbook Active Response)
+    WAZUH_API_URL = os.getenv("WAZUH_API_URL", "https://wazuh-manager:55000")
+    WAZUH_API_USER = os.getenv("WAZUH_API_USER", "wazuh")
+    WAZUH_API_PASSWORD = os.getenv("WAZUH_API_PASSWORD", "wazuh")
+
 
 class DevelopmentConfig(Config):
     """Development configuration."""
