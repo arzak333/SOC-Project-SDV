@@ -1288,6 +1288,7 @@ function StepForm({ onSubmit, onCancel }: StepFormProps) {
   const [type, setType] = useState<PlaybookStep['type']>('action')
   const [description, setDescription] = useState('')
   const [action, setAction] = useState('')
+  const [target, setTarget] = useState('')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -1295,7 +1296,7 @@ function StepForm({ onSubmit, onCancel }: StepFormProps) {
       name,
       type,
       description,
-      config: type === 'action' ? { action } : {},
+      config: type === 'action' ? { action_type: action, target: target } : {},
     })
   }
 
@@ -1359,24 +1360,46 @@ function StepForm({ onSubmit, onCancel }: StepFormProps) {
         </div>
 
         {type === 'action' && (
-          <div>
-            <label className="block text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>Action</label>
-            <select
-              value={action}
-              onChange={(e) => setAction(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{
-                backgroundColor: 'var(--color-bg-secondary)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-text-primary)'
-              }}
-            >
-              <option value="">Select action...</option>
-              {AVAILABLE_ACTIONS.map(a => (
-                <option key={a.value} value={a.value}>{a.label}</option>
-              ))}
-            </select>
-          </div>
+          <>
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>Action</label>
+              <select
+                value={action}
+                onChange={(e) => setAction(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  backgroundColor: 'var(--color-bg-secondary)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-primary)'
+                }}
+              >
+                <option value="">Select action...</option>
+                {AVAILABLE_ACTIONS.map(a => (
+                  <option key={a.value} value={a.value}>{a.label}</option>
+                ))}
+              </select>
+            </div>
+            
+            {action === 'block_ip' && (
+              <div>
+                <label className="block text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>
+                  Target IP / Variable
+                </label>
+                <input
+                  type="text"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  placeholder="e.g., {{event.src_ip}} or 192.168.1.100"
+                  className="w-full px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text-primary)'
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex gap-2 pt-2">
