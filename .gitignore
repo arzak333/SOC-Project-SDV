@@ -39,5 +39,9 @@ htmlcov/
 *.key
 secrets/
 
+# Celery runtime
+celerybeat-schedule
+celerybeat.pid
+
 # Claude Code
 .claude/

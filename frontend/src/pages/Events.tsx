@@ -7,6 +7,7 @@ import { SecurityEvent, EventStatus } from '../types'
 import EventCard from '../components/EventCard'
 import SeverityBadge from '../components/SeverityBadge'
 import StatusBadge from '../components/StatusBadge'
+import CustomSelect from '../components/CustomSelect'
 import ExportButton from '../components/ExportButton'
 import { exportEventsToCSV, exportEventsReport, exportToJSON } from '../utils/export'
 import { format } from 'date-fns'
@@ -139,44 +140,47 @@ export default function Events() {
               </div>
             </div>
 
-            <select
+            <CustomSelect
               value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
-              className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="">All Severities</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+              onChange={(v) => { setSeverityFilter(v); setPage(1) }}
+              placeholder="All Severities"
+              options={[
+                { value: '', label: 'All Severities' },
+                { value: 'critical', label: 'Critical' },
+                { value: 'high', label: 'High' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'low', label: 'Low' },
+              ]}
+            />
 
-            <select
+            <CustomSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="">All Status</option>
-              <option value="new">New</option>
-              <option value="investigating">Investigating</option>
-              <option value="resolved">Resolved</option>
-              <option value="false_positive">False Positive</option>
-            </select>
+              onChange={(v) => { setStatusFilter(v); setPage(1) }}
+              placeholder="All Status"
+              options={[
+                { value: '', label: 'All Status' },
+                { value: 'new', label: 'New' },
+                { value: 'investigating', label: 'Investigating' },
+                { value: 'resolved', label: 'Resolved' },
+                { value: 'false_positive', label: 'False Positive' },
+              ]}
+            />
 
-            <select
+            <CustomSelect
               value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value)}
-              className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="">All Sources</option>
-              <option value="firewall">Firewall</option>
-              <option value="ids">IDS</option>
-              <option value="endpoint">Endpoint</option>
-              <option value="network">Network</option>
-              <option value="email">Email</option>
-              <option value="active_directory">Active Directory</option>
-              <option value="application">Application</option>
-            </select>
+              onChange={(v) => { setSourceFilter(v); setPage(1) }}
+              placeholder="All Sources"
+              options={[
+                { value: '', label: 'All Sources' },
+                { value: 'firewall', label: 'Firewall' },
+                { value: 'ids', label: 'IDS' },
+                { value: 'endpoint', label: 'Endpoint' },
+                { value: 'network', label: 'Network' },
+                { value: 'email', label: 'Email' },
+                { value: 'active_directory', label: 'Active Directory' },
+                { value: 'application', label: 'Application' },
+              ]}
+            />
 
             <button
               type="submit"

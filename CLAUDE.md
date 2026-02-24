@@ -64,20 +64,23 @@ docker compose down && docker compose up -d       # Full restart
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Frontend (React)                             │
-│  Dashboard │ Events │ Alerts │ Playbooks │ Sites                │
-│  Port: 3000                                                      │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ REST API + WebSocket
-┌──────────────────────────┴──────────────────────────────────────┐
-│                     Backend (Flask)                              │
-│  /api/events │ /api/ingest │ /api/dashboard │ /api/alerts       │
-│  Port: 5000                                                      │
-└───────┬─────────────────┬─────────────────┬─────────────────────┘
-        │                 │                 │
-   PostgreSQL          Redis           Celery
-   Port: 5432       Port: 6379      (Alert Engine)
+                                              ┌──────────────────────────────┐
+                                              │   INFRASTRUCTURE (infra/)     │
+                                              │                              │
+┌──────────────────────────────────────┐      │  endpoint-pc-01 ─┐           │
+│         Frontend (React) :3000        │      │  endpoint-pc-02 ─┤→ Wazuh   │
+│  Dashboard│Events│Alerts│Playbooks    │      │                  │  Agents   │
+│  Incidents                            │      │                  ▼           │
+└─────────────────┬────────────────────┘      │           Wazuh Manager      │
+                  │ WebSocket + REST           │            │         │       │
+┌─────────────────┴────────────────────┐      │            │         │       │
+│         Backend (Flask) :5000         │◄─────│── webhook ─┘   Wazuh Dash.  │
+│  /api/ingest│events│dashboard│alerts  │      │                 :4443       │
+│  /api/endpoints│analysts│assets ──────│─────►│── GLPI :8080               │
+└──┬──────────────┬──────────────┬─────┘      └──────────────────────────────┘
+   │              │              │
+PostgreSQL     Redis         Celery
+(Events DB)  (Task Queue)  (Alert Engine)
 ```
 
 ## Project Structure
@@ -86,22 +89,23 @@ docker compose down && docker compose up -d       # Full restart
 Claude SOC project/
 ├── backend/
 │   ├── app/
-│   │   ├── models/          # SQLAlchemy models (Event, AlertRule, User)
-│   │   ├── routes/          # API endpoints (events, ingest, dashboard, alerts)
-│   │   └── services/        # Business logic (alert_engine, websocket, notifications)
+│   │   ├── models/          # SQLAlchemy models (Event, Incident, AlertRule, User)
+│   │   ├── routes/          # API endpoints (events, ingest, dashboard, alerts, incidents)
+│   │   └── services/        # Business logic (alert_engine + correlation, websocket)
 │   ├── config.py            # Flask configuration
 │   ├── celery_app.py        # Celery configuration
+│   ├── migrate_db.py        # Safe schema migration (run on startup)
 │   └── run.py               # Entry point
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # Reusable UI (StatCard, TopBar, Charts, etc.)
-│   │   ├── pages/           # Page components (Dashboard, Events, Alerts, etc.)
+│   │   ├── components/      # Reusable UI (StatCard, TopBar, CustomSelect, etc.)
+│   │   ├── pages/           # Page components (Dashboard, Events, Incidents, Alerts, etc.)
 │   │   ├── hooks/           # Custom hooks (useSocket)
 │   │   ├── api.ts           # API client functions
 │   │   └── types.ts         # TypeScript interfaces
 │   └── tailwind.config.js
 ├── scripts/
-│   ├── log_generator.py     # Generates realistic security events
+│   ├── log_generator.py     # Generates events for real infra (endpoint-pc-01/02, firewall-gw)
 │   └── init_db.py           # Database initialization
 ├── docs/
 │   ├── architecture.md      # Detailed architecture
@@ -134,6 +138,13 @@ Claude SOC project/
 | PATCH | `/api/alerts/rules/:id` | Update rule |
 | DELETE | `/api/alerts/rules/:id` | Delete rule |
 
+### Incidents
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/incidents` | List incidents (filter: `severity`, `status`, `assigned_to`; paginated) |
+| GET | `/api/incidents/:id` | Get incident + linked events |
+| PATCH | `/api/incidents/:id` | Update status, severity, assigned_to |
+
 ## Data Models
 
 ### Event Sources (monitored systems)
@@ -158,6 +169,19 @@ new → investigating → resolved
     false_positive
 ```
 
+### Incident Status Flow
+```
+new → open → investigating → resolved
+                  ↓
+             false_positive
+```
+
+### Incident
+- Created automatically by alert engine when a rule fires
+- Links N events via `event.incident_id` FK
+- `alert_rule_id` traces which rule triggered the incident
+- Deduplication: open incident per rule is reused (no duplicates)
+
 ## Code Patterns
 
 ### Frontend
@@ -178,17 +202,22 @@ new → investigating → resolved
 - Unused imports in `Events.tsx`, `Playbooks.tsx`, `AlertsBySourceChart.tsx`
 - These are warnings only; app runs fine
 
-### Implemented Features (v1.1)
+### Implemented Features (v1.2)
 - [x] JWT Authentication (login, register, roles: admin/analyst/supervisor)
 - [x] Dark/Light theme toggle
 - [x] Export functionality (CSV, PDF, JSON)
 - [x] Enhanced Playbooks with step execution
 - [x] Event Volume timeframes (5m, 15m, 30m, 1h, 6h, 24h, 7d, 30d)
 - [x] Historical data backfill (`--backfill` option)
+- [x] Event Correlation Engine — alert engine creates Incidents from fired rules
+- [x] Incidents page — list/grid, detail panel, status transitions, assignment
+- [x] Safe schema migration (`migrate_db.py`) — runs on startup, idempotent
+- [x] CustomSelect component — theme-aware dropdown replacing native `<select>`
+- [x] Real infra only — log generator targets endpoint-pc-01/02, firewall-gw
+- [x] pytest backend suite
 
 ### Not Yet Implemented
 - [ ] Email/Webhook notifications (configured but not connected)
-- [ ] Real SIEM integration (Wazuh/ELK)
 
 ## Token Optimization Guidelines
 

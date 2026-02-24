@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset } from './types'
+import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -139,6 +139,32 @@ export async function fetchDashboardTrendsWithRange(timeframe: string): Promise<
   timeframe: string
 }> {
   const { data } = await api.get('/dashboard/trends', { params: { timeframe } })
+  return data
+}
+
+// ============== INCIDENTS ==============
+
+export async function fetchIncidents(params?: {
+  status?: string
+  severity?: string
+  assigned_to?: string
+  page?: number
+  per_page?: number
+}): Promise<{ incidents: Incident[]; total: number; pages: number }> {
+  const { data } = await api.get('/incidents', { params })
+  return data
+}
+
+export async function fetchIncident(id: string): Promise<Incident> {
+  const { data } = await api.get(`/incidents/${id}`)
+  return data
+}
+
+export async function updateIncident(
+  id: string,
+  updates: Partial<Incident>
+): Promise<Incident> {
+  const { data } = await api.patch(`/incidents/${id}`, updates)
   return data
 }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Log Generator for SOC Dashboard Demo
-Simulates security events from audioprothésiste network (30 sites)
+Simulates security events from real infrastructure nodes
 """
 
 import random
@@ -14,8 +14,8 @@ from typing import Optional
 # Configuration
 API_URL = "http://localhost:5000/api/ingest"
 
-# Sites (30 audioprothésiste centers)
-SITES = [f"AUDIO_{str(i).zfill(3)}" for i in range(1, 31)]
+# Sites — matches real infrastructure instances
+SITES = ["endpoint-pc-01", "endpoint-pc-02", "firewall-gw"]
 
 # Event templates by source
 EVENT_TEMPLATES = {

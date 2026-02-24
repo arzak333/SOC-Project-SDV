@@ -15,7 +15,10 @@
 - `PATCH /api/events/:id/status` - Update event status and assignment
 - `GET /api/dashboard/stats` - Dashboard statistics (counts by status/severity/source)
 - `GET /api/dashboard/trends` - 7-day trends (hourly and daily)
-- `GET /api/dashboard/sites` - Summary by site (for 30 audioprothésiste centers)
+- `GET /api/dashboard/sites` - Summary by site (endpoint-pc-01, endpoint-pc-02, firewall-gw)
+- `GET /api/incidents` - List incidents (filter by severity, status, assigned_to; paginated)
+- `GET /api/incidents/:id` - Get incident + up to 100 linked events
+- `PATCH /api/incidents/:id` - Update status, severity, assigned_to
 - `GET/POST/PATCH/DELETE /api/alerts/rules` - Alert rules CRUD
 
 ### 3. WebSocket Server (Flask-SocketIO)
@@ -24,9 +27,11 @@
 - Room-based subscriptions (by site, by severity)
 - Connection status tracking
 
-### 4. Alert Engine (Celery + Redis)
+### 4. Alert Engine + Correlation (Celery + Redis)
 - Evaluates rules every 10 seconds
-- Supports threshold-based rules (count + timeframe)
+- Supports threshold-based rules (count + timeframe); default window 1h when unspecified
+- When a rule fires: creates or reopens an `Incident`, bulk-assigns matching events to it
+- Incident deduplication: only unassigned events considered; open incident per rule is reused
 - Actions: log, email, webhook
 - Tracks trigger count and last triggered time
 
@@ -34,7 +39,7 @@
 ```
 ┌────────────────┐    POST /api/ingest    ┌─────────────┐
 │  Log Sources   │ ─────────────────────► │   Flask     │
-│  (30 sites)    │                        │   Backend   │
+│  (real infra)  │                        │   Backend   │
 └────────────────┘                        └──────┬──────┘
                                                  │
                     ┌────────────────────────────┼───────────────────────────┐
@@ -69,9 +74,30 @@
 │ metadata    │ JSONB                              │
 │ status      │ ENUM (new/investigating/resolved)  │
 │ assigned_to │ VARCHAR(100)                       │
-│ site_id     │ VARCHAR(50) - for multi-site       │
+│ site_id     │ VARCHAR(50) - endpoint-pc-01/02,   │
+│             │   firewall-gw                      │
+│ incident_id │ UUID (FK → incidents, SET NULL)    │
 │ created_at  │ TIMESTAMP                          │
 │ updated_at  │ TIMESTAMP                          │
+└──────────────────────────────────────────────────┘
+```
+
+### Incidents Table
+```
+┌──────────────────────────────────────────────────┐
+│                   incidents                       │
+├──────────────────────────────────────────────────┤
+│ id            │ UUID (PK)                        │
+│ title         │ VARCHAR(200)                     │
+│ description   │ TEXT                             │
+│ status        │ ENUM (new/open/investigating/    │
+│               │   resolved/false_positive)       │
+│ severity      │ ENUM (critical/high/medium/low)  │
+│ alert_rule_id │ UUID (FK → alert_rules, nullable)│
+│ assigned_to   │ VARCHAR(100)                     │
+│ resolved_at   │ TIMESTAMP (nullable)             │
+│ created_at    │ TIMESTAMP                        │
+│ updated_at    │ TIMESTAMP                        │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -117,21 +143,24 @@ Claude SOC project/
 │   ├── app/
 │   │   ├── __init__.py          # Flask app factory
 │   │   ├── models/
-│   │   │   ├── event.py         # Event model
+│   │   │   ├── event.py         # Event model (+ incident_id FK)
+│   │   │   ├── incident.py      # Incident model (v1.2)
 │   │   │   ├── alert_rule.py    # AlertRule model
 │   │   │   └── user.py          # User model
 │   │   ├── routes/
 │   │   │   ├── events.py        # Events API
 │   │   │   ├── ingest.py        # Ingestion API
 │   │   │   ├── dashboard.py     # Dashboard API
-│   │   │   └── alerts.py        # Alert rules API
+│   │   │   ├── alerts.py        # Alert rules API
+│   │   │   └── incidents.py     # Incidents API (v1.2)
 │   │   ├── services/
 │   │   │   ├── websocket.py     # WebSocket handlers
-│   │   │   ├── alert_engine.py  # Rule evaluation
+│   │   │   ├── alert_engine.py  # Rule eval + incident correlation (v1.2)
 │   │   │   └── notifications.py # Email/webhook
 │   │   └── tasks.py             # Celery tasks
 │   ├── config.py
 │   ├── celery_app.py
+│   ├── migrate_db.py            # Safe schema migration (v1.2)
 │   ├── run.py
 │   ├── requirements.txt
 │   └── Dockerfile
@@ -141,11 +170,13 @@ Claude SOC project/
 │   │   │   ├── Layout.tsx
 │   │   │   ├── EventCard.tsx
 │   │   │   ├── SeverityBadge.tsx
-│   │   │   └── StatusBadge.tsx
+│   │   │   ├── StatusBadge.tsx
+│   │   │   └── CustomSelect.tsx # Reusable themed dropdown (v1.2)
 │   │   ├── pages/
 │   │   │   ├── Dashboard.tsx
 │   │   │   ├── Events.tsx
 │   │   │   ├── Alerts.tsx
+│   │   │   ├── Incidents.tsx    # Incident management page (v1.2)
 │   │   │   └── Sites.tsx
 │   │   ├── hooks/
 │   │   │   └── useSocket.tsx

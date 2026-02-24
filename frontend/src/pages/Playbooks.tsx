@@ -31,6 +31,7 @@ import clsx from 'clsx'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Playbook, PlaybookStep, PlaybookExecution } from '../types'
+import { useSocket } from '../hooks/useSocket'
 import {
   fetchPlaybooks,
   createPlaybook as apiCreatePlaybook,
@@ -67,6 +68,7 @@ const AVAILABLE_ACTIONS = [
 ]
 
 export default function Playbooks() {
+  const { socket } = useSocket()
   const { canManagePlaybooks } = useRole()
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
   const [executions, setExecutions] = useState<PlaybookExecution[]>([])
@@ -80,6 +82,40 @@ export default function Playbooks() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
+
+  // Listen to socket for real-time execution updates
+  useEffect(() => {
+    if (!socket) return
+
+    const handleExecutionUpdate = (updatedExecution: PlaybookExecution) => {
+      // Update active executions
+      setActiveExecutions(prev => {
+        const isCompleted = ['completed', 'failed', 'aborted'].includes(updatedExecution.status)
+        if (isCompleted) {
+          // It's finished, load history
+          setTimeout(loadData, 500)
+          return prev.filter(e => e.id !== updatedExecution.id)
+        }
+        
+        const exists = prev.find(e => e.id === updatedExecution.id)
+        if (exists) {
+          return prev.map(e => e.id === updatedExecution.id ? updatedExecution : e)
+        } else {
+          return [updatedExecution, ...prev]
+        }
+      })
+
+      // Update selected execution if it's the one we're viewing
+      setSelectedExecution(prev => 
+        prev?.id === updatedExecution.id ? updatedExecution : prev
+      )
+    }
+
+    socket.on('playbook_execution_update', handleExecutionUpdate)
+    return () => {
+      socket.off('playbook_execution_update', handleExecutionUpdate)
+    }
+  }, [socket])
 
   // Load data
   useEffect(() => {
@@ -1252,6 +1288,7 @@ function StepForm({ onSubmit, onCancel }: StepFormProps) {
   const [type, setType] = useState<PlaybookStep['type']>('action')
   const [description, setDescription] = useState('')
   const [action, setAction] = useState('')
+  const [target, setTarget] = useState('')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -1259,7 +1296,7 @@ function StepForm({ onSubmit, onCancel }: StepFormProps) {
       name,
       type,
       description,
-      config: type === 'action' ? { action } : {},
+      config: type === 'action' ? { action_type: action, target: target } : {},
     })
   }
 
@@ -1323,24 +1360,46 @@ function StepForm({ onSubmit, onCancel }: StepFormProps) {
         </div>
 
         {type === 'action' && (
-          <div>
-            <label className="block text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>Action</label>
-            <select
-              value={action}
-              onChange={(e) => setAction(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{
-                backgroundColor: 'var(--color-bg-secondary)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-text-primary)'
-              }}
-            >
-              <option value="">Select action...</option>
-              {AVAILABLE_ACTIONS.map(a => (
-                <option key={a.value} value={a.value}>{a.label}</option>
-              ))}
-            </select>
-          </div>
+          <>
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>Action</label>
+              <select
+                value={action}
+                onChange={(e) => setAction(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  backgroundColor: 'var(--color-bg-secondary)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-primary)'
+                }}
+              >
+                <option value="">Select action...</option>
+                {AVAILABLE_ACTIONS.map(a => (
+                  <option key={a.value} value={a.value}>{a.label}</option>
+                ))}
+              </select>
+            </div>
+            
+            {action === 'block_ip' && (
+              <div>
+                <label className="block text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>
+                  Target IP / Variable
+                </label>
+                <input
+                  type="text"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  placeholder="e.g., {{event.src_ip}} or 192.168.1.100"
+                  className="w-full px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text-primary)'
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex gap-2 pt-2">
