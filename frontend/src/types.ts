@@ -125,6 +125,23 @@ export interface Analyst {
   role: 'analyst' | 'supervisor' | 'admin'
 }
 
+// Incident types
+export type IncidentStatus = 'new' | 'open' | 'investigating' | 'resolved' | 'false_positive'
+
+export interface Incident {
+  id: string
+  title: string
+  description?: string
+  status: IncidentStatus
+  severity: Severity
+  alert_rule_id?: string
+  assigned_to?: string | null
+  event_count: number
+  created_at: string
+  updated_at?: string
+  resolved_at?: string
+  events?: SecurityEvent[] // populated when fetching specific incident
+}
 // Playbook types
 export type PlaybookStatus = 'active' | 'draft' | 'archived'
 export type PlaybookTrigger = 'manual' | 'alert_rule' | 'scheduled'

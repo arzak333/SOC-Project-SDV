@@ -17,20 +17,35 @@ def init_demo_users():
     from app.models.user import User, UserRole
 
     demo_users = [
-        {'username': 'admin', 'email': 'admin@audiopro.fr', 'password': 'admin123', 'role': UserRole.ADMIN},
-        {'username': 'analyst', 'email': 'analyst@audiopro.fr', 'password': 'analyst123', 'role': UserRole.ANALYST},
-        {'username': 'supervisor', 'email': 'supervisor@audiopro.fr', 'password': 'supervisor123', 'role': UserRole.SUPERVISOR},
+        {
+            "username": "admin",
+            "email": "admin@audiopro.fr",
+            "password": "admin123",
+            "role": UserRole.ADMIN,
+        },
+        {
+            "username": "analyst",
+            "email": "analyst@audiopro.fr",
+            "password": "analyst123",
+            "role": UserRole.ANALYST,
+        },
+        {
+            "username": "supervisor",
+            "email": "supervisor@audiopro.fr",
+            "password": "supervisor123",
+            "role": UserRole.SUPERVISOR,
+        },
     ]
 
     created = 0
     for user_data in demo_users:
-        if not User.query.filter_by(username=user_data['username']).first():
+        if not User.query.filter_by(username=user_data["username"]).first():
             user = User(
-                username=user_data['username'],
-                email=user_data['email'],
-                role=user_data['role']
+                username=user_data["username"],
+                email=user_data["email"],
+                role=user_data["role"],
             )
-            user.set_password(user_data['password'])
+            user.set_password(user_data["password"])
             db.session.add(user)
             created += 1
 
@@ -44,7 +59,7 @@ def init_demo_users():
 def create_app(config_name: str = None) -> Flask:
     """Application factory."""
     if config_name is None:
-        config_name = os.getenv('FLASK_ENV', 'development')
+        config_name = os.getenv("FLASK_ENV", "development")
 
     app = Flask(__name__)
     app.config.from_object(config[config_name])
@@ -64,19 +79,21 @@ def create_app(config_name: str = None) -> Flask:
     from app.routes.auth import auth_bp
     from app.routes.playbooks import playbooks_bp
     from app.routes.assets import assets_bp
+    from app.routes.incidents import incidents_bp
 
-    app.register_blueprint(events_bp, url_prefix='/api')
-    app.register_blueprint(dashboard_bp, url_prefix='/api')
-    app.register_blueprint(alerts_bp, url_prefix='/api')
-    app.register_blueprint(ingest_bp, url_prefix='/api')
-    app.register_blueprint(endpoints_bp, url_prefix='/api')
-    app.register_blueprint(auth_bp, url_prefix='/api')
-    app.register_blueprint(playbooks_bp, url_prefix='/api')
-    app.register_blueprint(assets_bp, url_prefix='/api')
+    app.register_blueprint(events_bp, url_prefix="/api")
+    app.register_blueprint(dashboard_bp, url_prefix="/api")
+    app.register_blueprint(alerts_bp, url_prefix="/api")
+    app.register_blueprint(ingest_bp, url_prefix="/api")
+    app.register_blueprint(endpoints_bp, url_prefix="/api")
+    app.register_blueprint(auth_bp, url_prefix="/api")
+    app.register_blueprint(playbooks_bp, url_prefix="/api")
+    app.register_blueprint(assets_bp, url_prefix="/api")
+    app.register_blueprint(incidents_bp, url_prefix="/api")
 
     # Health check
-    @app.route('/health')
+    @app.route("/health")
     def health():
-        return {'status': 'healthy'}
+        return {"status": "healthy"}
 
     return app

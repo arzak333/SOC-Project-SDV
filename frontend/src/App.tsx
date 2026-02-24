@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Events from './pages/Events'
 import Alerts from './pages/Alerts'
+import Incidents from './pages/Incidents'
 import Sites from './pages/Sites'
 import Playbooks from './pages/Playbooks'
 import Login from './pages/Login'
@@ -52,6 +53,7 @@ function AppRoutes() {
                   <Route path="/" element={<Dashboard realtimeEvents={realtimeEvents} />} />
                   <Route path="/events" element={<Events />} />
                   <Route path="/alerts" element={<Alerts />} />
+                  <Route path="/incidents" element={<Incidents />} />
                   <Route path="/sites" element={<Sites />} />
                   <Route path="/playbooks" element={<Playbooks />} />
                 </Routes>

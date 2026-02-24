@@ -10,8 +10,8 @@ class WazuhAPI:
         self.base_url = current_app.config.get(
             "WAZUH_API_URL", "https://wazuh-manager:55000"
         )
-        self.user = current_app.config.get("WAZUH_API_USER", "wazuh")
-        self.password = current_app.config.get("WAZUH_API_PASSWORD", "wazuh")
+        self.user = current_app.config.get("WAZUH_API_USER", "wazuh-wui")
+        self.password = current_app.config.get("WAZUH_API_PASSWORD", "MyS3cr37P450r.*-")
         self.token = None
 
         # In a real environment, we'd verify the cert. For the lab with self-signed certs, we disable it.
@@ -47,61 +47,37 @@ class WazuhAPI:
         }
 
         try:
-            if method.upper() == "GET":
-                response = requests.get(
-                    url,
-                    headers=headers,
-                    params=payload,
-                    verify=self.verify_ssl,
-                    timeout=10,
-                )
-            elif method.upper() == "PUT":
-                response = requests.put(
-                    url,
-                    headers=headers,
-                    json=payload,
-                    verify=self.verify_ssl,
-                    timeout=10,
-                )
-            else:
-                response = requests.post(
-                    url,
-                    headers=headers,
-                    json=payload,
-                    verify=self.verify_ssl,
-                    timeout=10,
-                )
+            for attempt in range(2):
+                if method.upper() == "GET":
+                    response = requests.request(
+                        method=method.upper(),
+                        url=url,
+                        headers=headers,
+                        verify=self.verify_ssl,
+                        timeout=10,
+                        params=payload,
+                    )
+                else:
+                    response = requests.request(
+                        method=method.upper(),
+                        url=url,
+                        headers=headers,
+                        verify=self.verify_ssl,
+                        timeout=10,
+                        json=payload,
+                    )
 
-            if response.status_code == 401:  # Token might be expired
-                if self._get_token():
-                    headers["Authorization"] = f"Bearer {self.token}"
-                    if method.upper() == "GET":
-                        response = requests.get(
-                            url,
-                            headers=headers,
-                            params=payload,
-                            verify=self.verify_ssl,
-                            timeout=10,
-                        )
-                    elif method.upper() == "PUT":
-                        response = requests.put(
-                            url,
-                            headers=headers,
-                            json=payload,
-                            verify=self.verify_ssl,
-                            timeout=10,
-                        )
+                if (
+                    response.status_code == 401 and attempt == 0
+                ):  # Token might be expired
+                    if self._get_token():
+                        headers["Authorization"] = f"Bearer {self.token}"
+                        continue
                     else:
-                        response = requests.post(
-                            url,
-                            headers=headers,
-                            json=payload,
-                            verify=self.verify_ssl,
-                            timeout=10,
-                        )
+                        break
 
-            response.raise_for_status()
-            return response.json()
+                response.raise_for_status()
+                return response.json()
 
         except Exception as e:
             current_app.logger.error(

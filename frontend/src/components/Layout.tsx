@@ -20,6 +20,7 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/incidents', icon: Shield, label: 'Incidents' },
   { path: '/alerts', icon: Bell, label: 'Alerts' },
   { path: '/events', icon: FileText, label: 'Events Log' },
   { path: '/playbooks', icon: BookOpen, label: 'Playbooks' },

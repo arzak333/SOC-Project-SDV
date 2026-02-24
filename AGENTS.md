@@ -105,24 +105,29 @@ Automated testing is currently sparse, but as agents add functionality, testing 
 
 ## 5. Current State & Missing Features
 
-The project is a highly advanced, feature-rich prototype (tracking as v1.1). However, several key features and integrations remain:
+The project is a highly advanced, feature-rich prototype (tracking as **v1.2**).
 
 ### What is Still to be Implemented?
-*   **Advanced Incident Response:**
-    *   **Automated Playbook Execution:** Playbooks currently have CRUD interfaces and basic execution tracking, but true automated execution (e.g., automatically isolating a host via a script) is missing. This is a **high priority**.
-    *   **Event Correlation:** The backend processes events individually; it lacks a correlation engine to group disparate events into a single "Incident."
 *   **Integrations:**
-    *   **Real SIEM Integration:** The system currently acts as its own datastore. Integration with actual SIEM tools (Wazuh, ELK stack) is planned but not implemented.
+    *   **Real SIEM Integration:** The system has basic integration with Wazuh for Active Response execution, but ingesting and synchronizing rules from actual SIEM tools (ELK stack) is planned but not fully implemented.
     *   **Notification Wiring:** `notifications.py` contains logic for SMTP and Webhooks, but it needs to be fully wired up, configured, and tested against real external endpoints.
 *   **Security & Scalability:**
     *   **API Rate Limiting:** Missing on public-facing endpoints (like `/api/ingest`).
     *   **Machine Learning:** Planned ML anomaly detection does not exist yet.
     *   **Mobile Responsiveness:** The UI is primarily desktop-focused and lacks full mobile optimizations.
 
+### What is Implemented (v1.2 additions)?
+*   **Event Correlation Engine:** `alert_engine.py` now creates `Incident` records when rules fire. Events are bulk-assigned to incidents via FK. Deduplication prevents duplicate incidents per rule.
+*   **Incidents API:** `GET/PATCH /api/incidents` with pagination, severity/status/assignment filters.
+*   **Incidents page:** Full React page with list/grid view, detail side panel, status transitions, assign-to-me.
+*   **Safe schema migration:** `migrate_db.py` runs `db.create_all()` + idempotent `ALTER TABLE` on startup. No Alembic required.
+*   **CustomSelect component:** `frontend/src/components/CustomSelect.tsx` — reusable theme-aware dropdown used on Events and Incidents pages.
+*   **Real infra only:** Log generator targets `endpoint-pc-01`, `endpoint-pc-02`, `firewall-gw` only.
+
 ### What is Still to be Tested?
-**Zero Automated Tests exist.** The following critical flows need testing once a framework is added:
-1.  **Alert Engine Logic (Celery):** Does the engine correctly aggregate events in 10-second windows and fire alerts without duplicating them?
-2.  **WebSocket Stability:** How does the frontend handle dropped connections or massive event bursts from the log generator?
-3.  **Authentication Security:** Token expiry handling, role-based access control.
-4.  **Database Concurrency:** Behavior when the `log_generator` blasts the `/api/ingest/batch` endpoint while the `alert_engine` is querying simultaneously.
-5.  **Data Export Limits:** Testing PDF/CSV generation limits on the frontend when exporting thousands of events.
+A **pytest suite exists** (`backend/tests/`) covering events, alert rules, dashboard, and playbook runner. The following flows still need coverage:
+1.  **Incident Correlation Logic:** Does the engine correctly deduplicate incidents and bulk-assign events?
+2.  **WebSocket Stability:** How does the frontend handle dropped connections or massive event bursts?
+3.  **Authentication Security:** Token expiry handling, role-based access control edge cases.
+4.  **Database Concurrency:** Behavior when `log_generator` blasts `/api/ingest/batch` while `alert_engine` queries simultaneously.
+5.  **Data Export Limits:** PDF/CSV generation limits when exporting thousands of events.

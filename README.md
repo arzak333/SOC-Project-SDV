@@ -10,11 +10,12 @@ Ce projet répond au cahier des charges d'un client souhaitant centraliser la su
 
 - Collecte multi-source (firewall, IDS, endpoints, AD, email, applications)
 - Dashboard temps réel avec WebSocket
-- Alertes personnalisables avec seuils
-- Vue par site pour supervision multi-sites
+- Alertes personnalisables avec seuils et **moteur de corrélation** (création automatique d'Incidents)
+- Vue par site pour supervision multi-sites (endpoint-pc-01, endpoint-pc-02, firewall-gw)
+- Gestion des Incidents : cycle de vie complet, assignation, vue détaillée avec événements liés
 - Génération de logs réalistes pour démonstration
 
-> ⚡ **Your SOC is now capable of Real Automated Mitigation!** An alert can be fired by Wazuh, ingested by your SOC, match a SOC Alert Rule, trigger a Playbook, and tell Wazuh to block the attacking IP on the firewall.
+> ⚡ **This SOC is now capable of Real Automated Mitigation!** An alert can be fired by Wazuh, ingested by your SOC, match a SOC Alert Rule, trigger a Playbook, and tell Wazuh to block the attacking IP on the firewall.
 
 ## Architecture
 
@@ -25,8 +26,9 @@ Ce projet répond au cahier des charges d'un client souhaitant centraliser la su
 ┌──────────────────────────────────────┐      │  endpoint-pc-01 ─┐           │
 │         Frontend (React) :3000        │      │  endpoint-pc-02 ─┤→ Wazuh   │
 │  Dashboard│Events│Alerts│Playbooks    │      │                  │  Agents   │
-└─────────────────┬────────────────────┘      │                  ▼           │
-                  │ WebSocket + REST           │           Wazuh Manager      │
+│  Incidents                            │      │                  ▼           │
+└─────────────────┬────────────────────┘      │           Wazuh Manager      │
+                  │ WebSocket + REST           │            │         │       │
 ┌─────────────────┴────────────────────┐      │            │         │       │
 │         Backend (Flask) :5000         │◄─────│── webhook ─┘   Wazuh Dash.  │
 │  /api/ingest│events│dashboard│alerts  │      │                 :4443       │
@@ -237,6 +239,14 @@ npm run dev
 | PATCH | `/api/alerts/rules/:id` | Modifier une règle |
 | DELETE | `/api/alerts/rules/:id` | Supprimer une règle |
 
+### Incidents
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/incidents` | Liste des incidents (filtres: `severity`, `status`, `assigned_to`; paginé) |
+| GET | `/api/incidents/:id` | Détail incident + événements liés |
+| PATCH | `/api/incidents/:id` | Modifier statut, sévérité, assignation |
+
 ### Endpoints, Analysts & Assets
 
 | Méthode | Endpoint | Description |
@@ -256,7 +266,8 @@ npm run dev
   "description": "Description de l'événement",
   "raw_log": "Log brut original",
   "metadata": {"source_ip": "...", "user": "..."},
-  "site_id": "AUDIO_001"
+  "site_id": "endpoint-pc-01",
+  "incident_id": "<uuid or null>"
 }
 ```
 
@@ -276,6 +287,7 @@ npm run dev
 - [x] Démonstrateur opérationnel
 - [x] Dashboards & alertes configurés
 - [x] Playbooks / procédures
+- [x] Moteur de corrélation et gestion des Incidents (v1.2)
 - [x] Rapport technique complet
 - [ ] Guide de déploiement & d'utilisation
 - [ ] Vidéo de démonstration

@@ -1,4 +1,3 @@
-import time
 from datetime import datetime
 from flask import current_app
 from app import db
@@ -78,9 +77,6 @@ class PlaybookRunner:
                 result = f"Unknown step type: {step_type}"
                 status = "failed"
 
-            # Artificial delay for realism in prototype
-            time.sleep(1)
-
         except Exception as e:
             current_app.logger.error(f"Error executing step {step_index}: {str(e)}")
             result = f"Error: {str(e)}"
@@ -114,9 +110,19 @@ class PlaybookRunner:
                 if event and "src_ip" in event.event_metadata:
                     target = event.event_metadata["src_ip"]
             elif target_var == "alert.src_ip" and execution.triggered_by_alert_id:
-                # If triggered by alert, we might need to find the related events
-                # For simplicity in this demo, we'll just mock the extraction if not found
-                target = "192.168.1.100"
+                # If triggered by alert, find the corresponding event representing the alert
+                from app.models import Event
+
+                alert_event = Event.query.get(execution.triggered_by_alert_id)
+                if alert_event and "src_ip" in alert_event.event_metadata:
+                    target = alert_event.event_metadata["src_ip"]
+                else:
+                    raise ValueError(
+                        f"Target {{alert.src_ip}} could not be resolved from alert {execution.triggered_by_alert_id}"
+                    )
+
+        if target.startswith("{{") and target.endswith("}}"):
+            raise ValueError(f"Could not resolve dynamic target variable: {target}")
 
         current_app.logger.info(f"Executing action {action_type} on target {target}")
 
