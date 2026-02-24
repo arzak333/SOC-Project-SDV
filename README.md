@@ -14,6 +14,8 @@ Ce projet répond au cahier des charges d'un client souhaitant centraliser la su
 - Vue par site pour supervision multi-sites
 - Génération de logs réalistes pour démonstration
 
+> ⚡ **Your SOC is now capable of Real Automated Mitigation!** An alert can be fired by Wazuh, ingested by your SOC, match a SOC Alert Rule, trigger a Playbook, and tell Wazuh to block the attacking IP on the firewall.
+
 ## Architecture
 
 ```
