@@ -1,21 +1,14 @@
 # SOC Externalisé - Réseau Audioprothésistes
 
-Plateforme de démonstration d'un SOC (Security Operations Center) externalisé pour un réseau de 30 centres d'audioprothésistes en France.
+Plateforme de démonstration d'un SOC (Security Operations Center) externalisé pour un réseau de centres d'audioprothésistes en France.
 
-## Projet M2 Mastère Cybersécurité - PSB
+## Contexte
 
-### Contexte
-
-Ce projet répond au cahier des charges d'un client souhaitant centraliser la supervision de sécurité de son réseau de points de vente. La solution propose :
-
-- Collecte multi-source (firewall, IDS, endpoints, AD, email, applications)
-- Dashboard temps réel avec WebSocket
-- Alertes personnalisables avec seuils et **moteur de corrélation** (création automatique d'Incidents)
-- Vue par site pour supervision multi-sites (endpoint-pc-01, endpoint-pc-02, firewall-gw)
-- Gestion des Incidents : cycle de vie complet, assignation, vue détaillée avec événements liés
-- Génération de logs réalistes pour démonstration
-
-> ⚡ **This SOC is now capable of Real Automated Mitigation!** An alert can be fired by Wazuh, ingested by your SOC, match a SOC Alert Rule, trigger a Playbook, and tell Wazuh to block the attacking IP on the firewall.
+| | |
+|---|---|
+| **Client** | Réseau de ~30 centres d'audioprothésistes en France, sans équipe sécurité interne |
+| **Besoin** | Supervision centralisée de la sécurité informatique de l'ensemble des points de vente |
+| **Projet** | M2 Mastère Cybersécurité - PSB Paris School of Business |
 
 ## Architecture
 
@@ -38,6 +31,34 @@ Ce projet répond au cahier des charges d'un client souhaitant centraliser la su
 PostgreSQL     Redis         Celery
 (Events DB)  (Task Queue)  (Alert Engine)
 ```
+
+## Fonctionnalités Clés
+
+### Mitigation Automatisée en Temps Réel
+
+Le SOC implémente une chaîne de réponse automatisée complète :
+
+```
+Wazuh Alert → Ingestion SOC → Règle d'Alerte → Playbook → Active Response Wazuh
+```
+
+Une alerte détectée par Wazuh est ingérée par le SOC, matchée par une règle d'alerte, déclenche un playbook de réponse, et ordonne à Wazuh de bloquer l'IP attaquante sur le firewall — sans intervention humaine.
+
+### Moteur de Corrélation & Incidents
+
+- Les règles d'alerte évaluent les événements en temps réel (seuil + fenêtre temporelle)
+- Quand une règle se déclenche, un **Incident** est créé automatiquement avec les événements corrélés
+- Déduplication : un incident ouvert par règle est réutilisé (pas de doublons)
+- Cycle de vie complet : `new → open → investigating → resolved / false_positive`
+
+### Autres Fonctionnalités
+
+- **Dashboard temps réel** avec WebSocket et KPI par sévérité
+- **Gestion des événements** avec filtres, recherche, assignation, commentaires
+- **Authentification JWT** avec rôles (admin, analyst, supervisor)
+- **Export** CSV, PDF, JSON
+- **Playbooks** avec exécution étape par étape
+- **Infrastructure simulée** : Wazuh SIEM + endpoints + firewall + GLPI
 
 ## Stack Technique
 
@@ -63,89 +84,24 @@ PostgreSQL     Redis         Celery
 
 ```bash
 # Cloner le projet
-git clone <https://github.com/arzak333/SOC-Project-SDV.git>
-cd: "SOC-Project-SDV"
+git clone https://github.com/arzak333/SOC-Project-SDV.git
+cd SOC-Project-SDV
 
 # Démarrer tous les services
 docker compose up -d
 
-# Initialiser la base de données et créer les utilisateurs de démo
+# Initialiser la base de données et les utilisateurs de démo
 docker compose exec backend python -c "from app import create_app, db, init_demo_users; app = create_app(); app.app_context().push(); db.create_all(); init_demo_users()"
 ```
 
 ### Accès
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000
-- **API Health**: http://localhost:5000/health
-
-### Étape 2 : Déployer l'infrastructure (métriques réelles)
-
-L'infrastructure Wazuh est nécessaire pour alimenter le dashboard avec de vrais événements de sécurité.
-
-```bash
-# Configurer le kernel pour Wazuh Indexer (OpenSearch)
-sudo sysctl -w vm.max_map_count=262144
-
-# Générer les certificats SSL (une seule fois)
-cd infrastructure/
-docker compose -f generate-certs.yml run --rm generator
-
-# Démarrer toute l'infrastructure
-docker compose up -d
-
-# Revenir à la racine
-cd ..
-```
-
-**Vérification :**
-
-```bash
-# Vérifier que les agents sont connectés
-docker exec infrastructure-wazuh-manager-1 /var/ossec/bin/agent_control -l
-# Attendu : endpoint-pc-01 et endpoint-pc-02 en status "Active"
-
-# Vérifier que les événements arrivent dans le SOC
-curl -s http://localhost:5000/api/dashboard/stats | python3 -m json.tool
-# Attendu : total_events > 0, total_sites >= 2
-```
-
-Les événements commencent à apparaître dans le dashboard sous 1-2 minutes.
-
-### Étape 3 (optionnel) : Configurer GLPI pour la gestion d'actifs
-
-GLPI permet d'enrichir les événements avec les informations d'inventaire IT.
-
-1. Accéder à GLPI : http://localhost:8080
-2. Se connecter avec `glpi` / `glpi`
-3. **Setup > General > API** :
-   - Activer "Enable REST API" → **Yes**
-   - Activer "Enable login with external token" → **Yes**
-   - Cliquer sur **API clients** → ouvrir le client par défaut
-   - Mettre **Active** → Yes, noter le **App-Token**
-4. **Administration > Users > glpi > Remote access keys** :
-   - Régénérer le token API, noter le **User Token**
-5. Configurer les tokens dans le SOC :
-   ```bash
-   # Ajouter dans un fichier .env ou directement dans docker-compose.yml
-   GLPI_APP_TOKEN=<votre_app_token>
-   GLPI_USER_TOKEN=<votre_user_token>
-
-   # Redémarrer le backend
-   docker compose restart backend
-   ```
-6. Vérifier : `curl -s http://localhost:5000/api/assets`
-
----
-
-## Accès aux Interfaces
-
 | Interface | URL | Identifiants |
 |-----------|-----|-------------|
 | SOC Dashboard | http://localhost:3000 | admin / admin123 |
-| Backend API | http://localhost:5000 | - |
-| Wazuh Dashboard | https://localhost:4443 | admin / SecretPassword |
-| GLPI | http://localhost:8080 | glpi / glpi |
+| Backend API | http://localhost:5000 | — |
+
+> Pour déployer l'infrastructure Wazuh et configurer GLPI, voir [infrastructure/README.md](infrastructure/README.md).
 
 ### Identifiants SOC
 
@@ -158,127 +114,23 @@ GLPI permet d'enrichir les événements avec les informations d'inventaire IT.
 ### Générer des logs de test
 
 ```bash
-# Installation des dépendances du script
 pip install -r scripts/requirements.txt
 
-# Générer des événements en continu (1 toutes les 2 secondes)
-python3 scripts/log_generator.py
-
-# Générer un scénario d'attaque complet
-python3 scripts/log_generator.py --attack
-
-# Mode burst (simulation d'attaque avec pics)
-python3 scripts/log_generator.py --burst --interval 1
-
-# Backfill: générer des données historiques (1000 événements sur 7 jours)
-python3 scripts/log_generator.py --backfill
-
-# Backfill personnalisé (2000 événements sur 30 jours)
-python3 scripts/log_generator.py --backfill --days 30 --count 2000
+python3 scripts/log_generator.py                                # Événements en continu
+python3 scripts/log_generator.py --attack                       # Scénario d'attaque
+python3 scripts/log_generator.py --burst --interval 1           # Mode burst (pics)
+python3 scripts/log_generator.py --backfill                     # Historique 7 jours
+python3 scripts/log_generator.py --backfill --days 30 --count 2000  # Historique personnalisé
 ```
 
-## Développement Local (sans Docker)
+## Documentation
 
-### Backend
-
-```bash
-cd backend
-
-# Créer un environnement virtuel
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou: venv\Scripts\activate  # Windows
-
-# Installer les dépendances
-pip install -r requirements.txt
-
-# Configurer les variables d'environnement
-cp ../.env.example .env
-
-# Démarrer le serveur
-python run.py
-```
-
-### Frontend
-
-```bash
-cd frontend
-
-# Installer les dépendances
-npm install
-
-# Démarrer le serveur de développement
-npm run dev
-```
-
-## API Endpoints
-
-### Events
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/api/events` | Liste des événements (avec filtres) |
-| GET | `/api/events/:id` | Détail d'un événement |
-| POST | `/api/ingest` | Ingérer un nouvel événement |
-| PATCH | `/api/events/:id/status` | Modifier le statut |
-
-### Dashboard
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/api/dashboard/stats` | Statistiques globales |
-| GET | `/api/dashboard/trends?timeframe=24h` | Tendances (5m, 15m, 30m, 1h, 6h, 24h, 7d, 30d) |
-| GET | `/api/dashboard/sites` | Résumé par site |
-
-### Alert Rules
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/api/alerts/rules` | Liste des règles |
-| POST | `/api/alerts/rules` | Créer une règle |
-| PATCH | `/api/alerts/rules/:id` | Modifier une règle |
-| DELETE | `/api/alerts/rules/:id` | Supprimer une règle |
-
-### Incidents
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/api/incidents` | Liste des incidents (filtres: `severity`, `status`, `assigned_to`; paginé) |
-| GET | `/api/incidents/:id` | Détail incident + événements liés |
-| PATCH | `/api/incidents/:id` | Modifier statut, sévérité, assignation |
-
-### Endpoints, Analysts & Assets
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/api/endpoints` | Endpoints monitorés (données réelles depuis la DB) |
-| GET | `/api/analysts` | Liste des analystes (depuis le modèle User) |
-| GET | `/api/assets` | Ordinateurs GLPI |
-| GET | `/api/assets/:name` | Recherche asset par nom d'hôte |
-
-## Structure des Événements
-
-```json
-{
-  "source": "firewall|ids|endpoint|network|email|active_directory|application",
-  "event_type": "auth_failure|port_scan|malware_detected|...",
-  "severity": "critical|high|medium|low",
-  "description": "Description de l'événement",
-  "raw_log": "Log brut original",
-  "metadata": {"source_ip": "...", "user": "..."},
-  "site_id": "endpoint-pc-01",
-  "incident_id": "<uuid or null>"
-}
-```
-
-## Niveaux de Sévérité
-
-| Niveau | Couleur | Description |
-|--------|---------|-------------|
-| Critical | Rouge | Menace immédiate (breach active, ransomware) |
-| High | Orange | Risque sérieux (multiples échecs auth, scan) |
-| Medium | Jaune | Problème potentiel (trafic anormal) |
-| Low | Bleu | Informationnel (événement normal) |
+| Document | Description |
+|----------|-------------|
+| [docs/reference.md](docs/reference.md) | Référence API complète (42 endpoints) |
+| [docs/architecture.md](docs/architecture.md) | Architecture technique, schéma BDD, structure du projet |
+| [docs/FEATURES.md](docs/FEATURES.md) | Inventaire complet des fonctionnalités par version |
+| [infrastructure/README.md](infrastructure/README.md) | Déploiement infrastructure Wazuh + GLPI |
 
 ## Livrables du Projet
 

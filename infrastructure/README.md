@@ -57,6 +57,55 @@ docker compose up -d
 4. **Integration script** transforms Wazuh alerts to SOC format and POSTs to `/api/ingest`
 5. **SOC Dashboard** displays events in real-time via WebSocket
 
+## Verifying the Setup
+
+### Check agent connectivity
+```bash
+docker exec infrastructure-wazuh-manager-1 /var/ossec/bin/agent_control -l
+# Expected: endpoint-pc-01 and endpoint-pc-02 with status "Active"
+```
+
+### Check events are flowing to the SOC
+```bash
+curl -s http://localhost:5000/api/dashboard/stats | python3 -m json.tool
+# Expected: total_events > 0, total_sites >= 2
+```
+
+Events should appear in the SOC dashboard within 1-2 minutes of starting the infrastructure.
+
+## GLPI Configuration (Optional)
+
+GLPI enriches security events with IT asset inventory data.
+
+### 1. Enable the REST API
+1. Access GLPI: http://localhost:8080, login with `glpi` / `glpi`
+2. **Setup > General > API**:
+   - Enable REST API: **Yes**
+   - Enable login with external token: **Yes**
+3. Click **API clients** > open the default client
+   - Set **Active**: Yes
+   - Note the **App-Token**
+
+### 2. Generate a User Token
+1. **Administration > Users > glpi > Remote access keys**
+2. Regenerate the API token, note the **User Token**
+
+### 3. Configure the SOC backend
+```bash
+# Add to .env or directly in docker-compose.yml
+GLPI_APP_TOKEN=<your_app_token>
+GLPI_USER_TOKEN=<your_user_token>
+
+# Restart the backend
+docker compose restart backend
+```
+
+### 4. Verify
+```bash
+curl -s http://localhost:5000/api/assets
+# Should return GLPI computer inventory
+```
+
 ## Credentials
 
 | Service | Username | Password |

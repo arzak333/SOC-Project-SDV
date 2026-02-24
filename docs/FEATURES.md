@@ -11,7 +11,7 @@ This file tracks all features implemented in the AudioSOC project.
 - KPI cards showing event counts by severity
 - Event Volume chart with configurable timeframes: 5m, 15m, 30m, 1h, 6h, 24h, 7d, 30d
 - Critical events list with quick access
-- Site summary overview (30 centers)
+- Site summary overview (per monitored endpoint)
 - Auto-refresh with live updates
 
 ### Events Management (v1.0)
@@ -34,7 +34,7 @@ This file tracks all features implemented in the AudioSOC project.
 - Expandable rule details (v1.1)
 
 ### Multi-Site Management (v1.0)
-- 30 audioprothésiste center support
+- Multi-center support (designed for ~30 audioprothésiste centers; demo uses endpoint-pc-01, endpoint-pc-02, firewall-gw)
 - Per-site event filtering
 - Site summary statistics
 - Site-based WebSocket subscriptions
@@ -246,7 +246,6 @@ Separate Docker Compose stack in `infrastructure/` simulating the client network
 - [ ] Email notifications (SMTP integration)
 - [ ] Webhook notifications
 - [ ] Advanced analytics dashboard
-- [ ] Event correlation
 
 ### v2.0 (Planned)
 - [ ] Machine learning anomaly detection
@@ -261,5 +260,5 @@ Separate Docker Compose stack in `infrastructure/` simulating the client network
 |---------|------|-------------|
 | v1.0 | 2025-01 | Initial release: Dashboard, Events, Alerts, Sites, Multi-site support |
 | v1.1 | 2026-01 | Authentication, Themes, Export, Enhanced Playbooks, Rule templates, RBAC |
-| v1.2 | 2026-02 | GLPI integration, Infrastructure lab (Wazuh + endpoints + firewall) |
+| v1.2 | 2026-02 | GLPI integration, Infrastructure lab (Wazuh + endpoints + firewall), Event Correlation Engine, Incidents module |
 | v1.3 | 2026-02 | Automated backend testing (pytest), Automated playbook execution runner |

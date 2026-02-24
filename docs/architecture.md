@@ -138,7 +138,7 @@
 
 ## Directory Structure
 ```
-Claude SOC project/
+SOC-Project---SDV/
 ├── backend/
 │   ├── app/
 │   │   ├── __init__.py          # Flask app factory
@@ -152,7 +152,11 @@ Claude SOC project/
 │   │   │   ├── ingest.py        # Ingestion API
 │   │   │   ├── dashboard.py     # Dashboard API
 │   │   │   ├── alerts.py        # Alert rules API
-│   │   │   └── incidents.py     # Incidents API (v1.2)
+│   │   │   ├── incidents.py     # Incidents API (v1.2)
+│   │   │   ├── playbooks.py     # Playbooks CRUD + execution
+│   │   │   ├── auth.py          # JWT authentication
+│   │   │   ├── assets.py        # GLPI asset proxy
+│   │   │   └── endpoints.py     # Monitored endpoints
 │   │   ├── services/
 │   │   │   ├── websocket.py     # WebSocket handlers
 │   │   │   ├── alert_engine.py  # Rule eval + incident correlation (v1.2)
@@ -189,12 +193,37 @@ Claude SOC project/
 ├── scripts/
 │   ├── log_generator.py         # Demo event generator
 │   └── init_db.py               # Database initialization
+├── infrastructure/
+│   ├── docker-compose.yml      # Wazuh + endpoints + GLPI stack
+│   ├── generate-certs.yml      # SSL certificate generation
+│   └── README.md               # Infrastructure setup guide
 ├── docs/
 │   ├── architecture.md
-│   ├── reference.md
+│   ├── reference.md            # Complete API reference
+│   ├── FEATURES.md             # Feature inventory
 │   └── project_status.md
 ├── docker-compose.yml
 ├── README.md
-├── claude.md
 └── .env.example
+```
+
+## Local Development (without Docker)
+
+### Backend
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Linux/Mac (venv\Scripts\activate on Windows)
+pip install -r requirements.txt
+cp ../.env.example .env
+python run.py
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
