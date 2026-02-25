@@ -14,6 +14,7 @@ venv/
 dist/
 build/
 *.egg-info/
+Alternative_SOC_Infrastructure/
 
 # IDE
 .idea/
@@ -51,3 +52,4 @@ CLAUDE.md
 AGENTS.md
 session_log.md
 CHANGELOG.md
+
