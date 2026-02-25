@@ -13,10 +13,7 @@ Plateforme de démonstration d'un SOC (Security Operations Center) externalisé 
 
 ## Architecture
 
-```
 <img width="937" height="662" alt="Screenshot 2026-02-25 011340" src="https://github.com/user-attachments/assets/17926a4a-0106-4d57-8c71-a76e4b01db7d" />
-
-```
 
 ## Fonctionnalités Clés
 
