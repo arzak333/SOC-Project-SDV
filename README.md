@@ -35,7 +35,7 @@ PostgreSQL     Redis         Celery
 
 ## Fonctionnalités Clés
 
-### Mitigation Automatisée en Temps Réel
+### Réponse Automatisée aux Incidents
 
 Le SOC implémente une chaîne de réponse automatisée complète :
 
