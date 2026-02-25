@@ -14,23 +14,8 @@ Plateforme de démonstration d'un SOC (Security Operations Center) externalisé 
 ## Architecture
 
 ```
-                                              ┌──────────────────────────────┐
-                                              │   INFRASTRUCTURE (infra/)     │
-                                              │                              │
-┌──────────────────────────────────────┐      │  endpoint-pc-01 ─┐           │
-│         Frontend (React) :3000        │      │  endpoint-pc-02 ─┤→ Wazuh   │
-│  Dashboard│Events│Alerts│Playbooks    │      │                  │  Agents   │
-│  Incidents                            │      │                  ▼           │
-└─────────────────┬────────────────────┘      │           Wazuh Manager      │
-                  │ WebSocket + REST           │            │         │       │
-┌─────────────────┴────────────────────┐      │            │         │       │
-│         Backend (Flask) :5000         │◄─────│── webhook ─┘   Wazuh Dash.  │
-│  /api/ingest│events│dashboard│alerts  │      │                 :4443       │
-│  /api/endpoints│analysts│assets ──────│─────►│── GLPI :8080               │
-└──┬──────────────┬──────────────┬─────┘      └──────────────────────────────┘
-   │              │              │
-PostgreSQL     Redis         Celery
-(Events DB)  (Task Queue)  (Alert Engine)
+<img width="937" height="662" alt="Screenshot 2026-02-25 011340" src="https://github.com/user-attachments/assets/17926a4a-0106-4d57-8c71-a76e4b01db7d" />
+
 ```
 
 ## Fonctionnalités Clés
