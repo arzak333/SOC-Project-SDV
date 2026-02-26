@@ -11,6 +11,7 @@ import {
   ArrowUpCircle,
   MessageSquare,
   Send,
+  Check,
 } from 'lucide-react'
 import clsx from 'clsx'
 import Modal from './Modal'
@@ -90,9 +91,12 @@ export default function AlertDetailModal({
   const [newComment, setNewComment] = useState('')
   const [analysts, setAnalysts] = useState<Analyst[]>([])
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
+  const [actionStates, setActionStates] = useState<Record<string, 'idle' | 'done'>>({})
 
   useEffect(() => {
     if (isOpen && eventId) {
+      setActionStates({})
+      setActiveTab('overview')
       loadEventData()
     }
   }, [isOpen, eventId])
@@ -519,30 +523,49 @@ export default function AlertDetailModal({
                     Quick Actions
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => toast.info('Creating ticket...')}
-                      className="px-4 py-2 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg text-sm transition-colors"
-                    >
-                      Create Ticket
-                    </button>
-                    <button
-                      onClick={() => toast.info('Blocking IP...')}
-                      className="px-4 py-2 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg text-sm transition-colors"
-                    >
-                      Block Source IP
-                    </button>
-                    <button
-                      onClick={() => toast.info('Isolating endpoint...')}
-                      className="px-4 py-2 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg text-sm transition-colors"
-                    >
-                      Isolate Endpoint
-                    </button>
-                    <button
-                      onClick={() => toast.info('Running playbook...')}
-                      className="px-4 py-2 bg-slate-700 text-slate-300 hover:bg-slate-600 rounded-lg text-sm transition-colors"
-                    >
-                      Run Playbook
-                    </button>
+                    {[
+                      { key: 'ticket', label: 'Create Ticket', doneLabel: 'Ticket Created' },
+                      { key: 'block_ip', label: 'Block Source IP', doneLabel: 'IP Blocked' },
+                      { key: 'isolate', label: 'Isolate Endpoint', doneLabel: 'Endpoint Isolated' },
+                      { key: 'playbook', label: 'Run Playbook', doneLabel: 'Playbook Launched' },
+                    ].map((action) => {
+                      const isDone = actionStates[action.key] === 'done'
+                      return (
+                        <button
+                          key={action.key}
+                          onClick={() => {
+                            if (isDone) {
+                              // Toggle back to idle
+                              setActionStates((prev) => ({ ...prev, [action.key]: 'idle' }))
+                              toast.info(`${action.label} undone`)
+                              setTimeline((prev) => prev.filter((t) => t.action !== action.doneLabel))
+                            } else {
+                              // Instant done
+                              setActionStates((prev) => ({ ...prev, [action.key]: 'done' }))
+                              toast.success(action.doneLabel)
+                              setTimeline((prev) => [
+                                ...prev,
+                                {
+                                  id: Date.now().toString(),
+                                  timestamp: new Date().toISOString(),
+                                  action: action.doneLabel,
+                                  actor: 'Current User',
+                                },
+                              ])
+                            }
+                          }}
+                          className={clsx(
+                            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                            isDone
+                              ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          )}
+                        >
+                          {isDone && <Check className="w-4 h-4" />}
+                          {isDone ? action.doneLabel : action.label}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               </div>

@@ -83,12 +83,39 @@ The alert engine is now a **full correlation engine**:
 - [x] **Real infrastructure only** — log generator constrained to `endpoint-pc-01`, `endpoint-pc-02`, `firewall-gw`, `glpi-crm`; fake AUDIO_* site data removed from DB
 - [x] **pytest suite** — backend test coverage for events, alert rules, dashboard, playbook runner
 
+---
+
+## Current Milestone: Version 1.4 — Dashboard Analytics & UX — COMPLETED
+
+### Completed ✓
+
+#### v1.3 Features
+- [x] **Automated backend testing** — pytest suite covering events, alert rules, dashboard, playbook runner
+- [x] **Automated playbook execution runner** — Celery-driven step execution
+
+#### v1.4 Features (Dashboard Analytics & UX)
+- [x] **Trend indicators on StatCards** — % change vs previous 24h for Security Events and Critical Alerts
+  - Backend: `events_prev_24h`, `critical_prev_24h` added to `/dashboard/stats`
+- [x] **Severity Trend Chart** — stacked area chart (daily breakdown by severity) for 7d/30d ranges
+  - Component: `SeverityTrendChart.tsx`; backend: `daily` array in `/dashboard/trends`
+- [x] **Activity Heatmap** — 7-day × 24-hour event density heatmap
+  - Component: `ActivityHeatmap.tsx`; backend: `GET /api/dashboard/heatmap`
+- [x] **Top Source IPs widget** — top 10 IPs with severity-colored bars
+  - Component: `TopSourceIPs.tsx`; backend: `GET /api/dashboard/top-ips` (JSONB query)
+- [x] **Quick Actions column** in RecentAlertsTable — Eye (view) + UserCheck (assign to me)
+- [x] **Alert Detail Modal — toggleable Quick Actions** — Create Ticket, Block IP, Isolate Endpoint, Run Playbook (instant feedback, re-clickable)
+- [x] **Degraded endpoint sub-text** — EndpointStatusCard shows reason for degraded/offline status
+- [x] **Live feed animation** — new alert rows flash blue highlight then fade (`animate-new-entry`)
+- [x] **Live mode toggle** — LIVE/Paused button with 10s auto-refresh
+- [x] **Interactive donut chart** — click source slice to filter alerts table
+
 ### In Progress 🚧
 None
 
 ### Not Yet Implemented
 - [ ] Email notification integration
 - [ ] Webhook notifications
+- [ ] Geolocation map (planned)
 
 ### Blocked ⛔
 None
@@ -101,3 +128,4 @@ None
 - 2026-02-04: **V1.1 COMPLETED** - Added JWT auth, theme toggle, export (CSV/PDF/JSON), playbooks backend with execution tracking, event volume timeframes, backfill option.
 - 2026-02-05: PDF export improved with html2pdf.js for direct download + better styling.
 - 2026-02-24: **V1.2 COMPLETED** — Event Correlation Engine (Incident model, migration, alert engine refactor), Incidents page (React), safe schema migration, CustomSelect component, log generator constrained to real infra (endpoint-pc-01/02, firewall-gw), pytest suite added.
+- 2026-02-26: **V1.4 COMPLETED** — Dashboard analytics: trend indicators (% change), severity trend chart, activity heatmap, top source IPs widget, quick actions (table + modal), degraded endpoint tooltips, live feed animation, interactive donut chart.

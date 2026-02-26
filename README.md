@@ -36,8 +36,9 @@ Une alerte détectée par Wazuh est ingérée par le SOC, matchée par une règl
 
 ### Autres Fonctionnalités
 
-- **Dashboard temps réel** avec WebSocket et KPI par sévérité
-- **Gestion des événements** avec filtres, recherche, assignation, commentaires
+- **Dashboard temps réel** avec WebSocket, KPI par sévérité, indicateurs de tendance (% vs J-1)
+- **Analytics avancés** : heatmap d'activité, top source IPs, severity trend chart, donut interactif par source
+- **Gestion des événements** avec filtres, recherche, assignation, commentaires, quick actions
 - **Authentification JWT** avec rôles (admin, analyst, supervisor)
 - **Export** CSV, PDF, JSON
 - **Playbooks** avec exécution étape par étape
@@ -123,6 +124,7 @@ python3 scripts/log_generator.py --backfill --days 30 --count 2000  # Historique
 - [x] Dashboards & alertes configurés
 - [x] Playbooks / procédures
 - [x] Moteur de corrélation et gestion des Incidents (v1.2)
+- [x] Dashboard analytics avancés (v1.4)
 - [x] Rapport technique complet
 - [ ] Guide de déploiement & d'utilisation
 - [ ] Vidéo de démonstration
