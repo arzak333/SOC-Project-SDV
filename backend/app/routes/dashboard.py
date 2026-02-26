@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from app import db
-from app.models import Event, EventStatus, EventSeverity, EventSource
+from app.models import Event, EventStatus, EventSeverity, EventSource, Incident, IncidentStatus
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -40,6 +40,11 @@ def get_stats():
         Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING])
     ).count()
 
+    # All unresolved events (any severity)
+    active_alerts = Event.query.filter(
+        Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING])
+    ).count()
+
     # Events by source
     source_counts = dict(
         db.session.query(Event.source, func.count(Event.id))
@@ -50,11 +55,18 @@ def get_stats():
     # Unique sites
     total_sites = db.session.query(func.count(func.distinct(Event.site_id))).scalar() or 0
 
+    # Open incidents
+    open_incidents = Incident.query.filter(
+        Incident.status.in_([IncidentStatus.NEW, IncidentStatus.OPEN, IncidentStatus.INVESTIGATING])
+    ).count()
+
     return jsonify({
         'total_events': total_events,
         'events_last_24h': events_24h,
         'critical_open': critical_open,
+        'active_alerts': active_alerts,
         'total_sites': total_sites,
+        'open_incidents': open_incidents,
         'by_status': {
             status.value if hasattr(status, 'value') else str(status): count
             for status, count in status_counts.items()
@@ -164,6 +176,24 @@ def get_trends():
         'daily': list(daily.values()),
         'timeframe': timeframe
     })
+
+
+@dashboard_bp.route('/dashboard/heatmap', methods=['GET'])
+def get_heatmap():
+    """Get event activity heatmap — count by day-of-week × hour-of-day (last 30 days)."""
+    since = datetime.utcnow() - timedelta(days=30)
+    results = (
+        db.session.query(
+            func.extract('dow', Event.timestamp).label('day'),
+            func.extract('hour', Event.timestamp).label('hour'),
+            func.count(Event.id).label('count')
+        )
+        .filter(Event.timestamp >= since)
+        .group_by('day', 'hour')
+        .all()
+    )
+    data = [{'day': int(r.day), 'hour': int(r.hour), 'count': r.count} for r in results]
+    return jsonify({'heatmap': data})
 
 
 @dashboard_bp.route('/dashboard/sites', methods=['GET'])

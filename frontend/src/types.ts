@@ -43,10 +43,18 @@ export interface DashboardStats {
   total_events: number
   events_last_24h: number
   critical_open: number
+  active_alerts: number
   total_sites: number
+  open_incidents: number
   by_status: Record<string, number>
   by_severity: Record<string, number>
   by_source: Record<string, number>
+}
+
+export interface HeatmapEntry {
+  day: number   // 0=Sun, 1=Mon ... 6=Sat
+  hour: number  // 0-23
+  count: number
 }
 
 export interface SiteSummary {

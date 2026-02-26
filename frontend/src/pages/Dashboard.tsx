@@ -1,14 +1,16 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Activity, AlertTriangle, Monitor, Users, Radio, Pause } from 'lucide-react'
-import { fetchDashboardStats, fetchDashboardTrendsWithRange, fetchEvents } from '../api'
-import { DashboardStats, SecurityEvent } from '../types'
+import { Activity, AlertTriangle, Monitor, Users, Radio, Pause, ShieldAlert } from 'lucide-react'
+import { fetchDashboardStats, fetchDashboardTrendsWithRange, fetchEvents, fetchDashboardHeatmap } from '../api'
+import { DashboardStats, SecurityEvent, HeatmapEntry } from '../types'
 import StatCard from '../components/StatCard'
 import EventVolumeChart from '../components/EventVolumeChart'
 import AlertsBySourceChart from '../components/AlertsBySourceChart'
 import RecentAlertsTable from '../components/RecentAlertsTable'
 import EndpointStatusCard from '../components/EndpointStatusCard'
 import AlertDetailModal from '../components/AlertDetailModal'
+import SeverityTrendChart from '../components/SeverityTrendChart'
+import ActivityHeatmap from '../components/ActivityHeatmap'
 import { ToastContainer, toast } from '../components/Toast'
 import clsx from 'clsx'
 
@@ -18,21 +20,20 @@ interface DashboardProps {
 
 type TimeRange = '5m' | '15m' | '30m' | '1h' | '6h' | '24h' | '7d' | '30d'
 
-// Source colors for donut chart
+// Source colors for donut chart — matches real infrastructure
 const SOURCE_COLORS: Record<string, string> = {
-  application: '#22c55e', // green - Apps (CRM)
   firewall: '#ef4444',    // red
-  ids: '#3b82f6',         // blue - Servers
-  endpoint: '#f59e0b',    // orange - Workstations
-  network: '#8b5cf6',     // purple
-  email: '#06b6d4',       // cyan
-  active_directory: '#ec4899', // pink
+  endpoint: '#3b82f6',    // blue
 }
 
 export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [trends, setTrends] = useState<{ hourly: Array<{ hour: string; count: number }> } | null>(null)
+  const [trends, setTrends] = useState<{
+    hourly: Array<{ hour: string; count: number }>
+    daily: Array<{ date: string; critical: number; high: number; medium: number; low: number }>
+  } | null>(null)
+  const [heatmapData, setHeatmapData] = useState<HeatmapEntry[]>([])
   const [criticalAlerts, setCriticalAlerts] = useState<SecurityEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [chartLoading, setChartLoading] = useState(false)
@@ -47,14 +48,16 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
 
   const loadData = useCallback(async (currentTimeRange: TimeRange = timeRange) => {
     try {
-      const [statsData, trendsData, eventsData] = await Promise.all([
+      const [statsData, trendsData, eventsData, heatmapResult] = await Promise.all([
         fetchDashboardStats(),
         fetchDashboardTrendsWithRange(currentTimeRange),
         fetchEvents({ severity: 'critical,high', status: 'new', limit: 10 }),
+        fetchDashboardHeatmap(),
       ])
       setStats(statsData)
       setTrends(trendsData)
       setCriticalAlerts(eventsData.events || [])
+      setHeatmapData(heatmapResult.heatmap || [])
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     } finally {
@@ -206,8 +209,8 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
         </div>
       </div>
 
-      {/* Stats Cards - Now Clickable */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
           icon={<Activity className="w-6 h-6" />}
           label="Security Events"
@@ -217,20 +220,26 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
         />
         <StatCard
           icon={<AlertTriangle className="w-6 h-6" />}
-          label="Active Alerts"
+          label="Critical Alerts Triggered"
           value={stats?.critical_open ?? 0}
           linkTo="/alerts"
           linkParams={{ status: 'new,investigating' }}
         />
         <StatCard
+          icon={<ShieldAlert className="w-6 h-6" />}
+          label="Incidents Ouverts"
+          value={stats?.open_incidents ?? 0}
+          linkTo="/incidents"
+        />
+<StatCard
           icon={<Monitor className="w-6 h-6" />}
-          label="Endpoints Monitored"
+          label="Endpoints"
           value={stats?.total_sites ?? 0}
           linkTo="/sites"
         />
         <StatCard
           icon={<Users className="w-6 h-6" />}
-          label="Event Sources"
+          label="Sources"
           value={stats?.by_source ? Object.keys(stats.by_source).length : 0}
           linkTo="/events"
         />
@@ -256,6 +265,11 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
         </div>
       </div>
 
+      {/* Severity Trend (visible uniquement pour 7d/30d) */}
+      {(timeRange === '7d' || timeRange === '30d') && (
+        <SeverityTrendChart data={trends?.daily ?? []} loading={chartLoading} />
+      )}
+
       {/* Recent Alerts Table + Endpoint Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
@@ -271,6 +285,9 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
           <EndpointStatusCard maxDisplay={5} />
         </div>
       </div>
+
+      {/* Activity Heatmap */}
+      <ActivityHeatmap data={heatmapData} />
 
       {/* Alert Detail Modal */}
       <AlertDetailModal
@@ -291,13 +308,8 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
 // Helper functions
 function formatSourceName(source: string): string {
   const names: Record<string, string> = {
-    application: 'Apps (CRM)',
-    firewall: 'Firewalls',
-    ids: 'Servers',
-    endpoint: 'Workstations',
-    network: 'Network',
-    email: 'Email',
-    active_directory: 'Active Directory',
+    firewall: 'Firewall',
+    endpoint: 'Endpoints',
   }
   return names[source] || source.charAt(0).toUpperCase() + source.slice(1)
 }

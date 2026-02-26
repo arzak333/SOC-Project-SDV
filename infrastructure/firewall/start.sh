@@ -11,6 +11,14 @@ fi
 
 mkdir -p /var/log/firewall
 
+# Add firewall log monitoring to Wazuh agent config
+# Insert <localfile> block before closing </ossec_config> tag
+sed -i '/<\/ossec_config>/i \
+  <localfile>\
+    <log_format>syslog</log_format>\
+    <location>/var/log/firewall/iptables.log</location>\
+  </localfile>' /var/ossec/etc/ossec.conf
+
 # Start rsyslog (imklog disabled in Dockerfile - no /proc/kmsg in container)
 rsyslogd
 

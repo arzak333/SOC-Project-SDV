@@ -17,7 +17,7 @@ API_URL = "http://localhost:5000/api/ingest"
 # Sites — matches real infrastructure instances
 SITES = ["endpoint-pc-01", "endpoint-pc-02", "firewall-gw"]
 
-# Event templates by source
+# Event templates by source — only real infrastructure sources
 EVENT_TEMPLATES = {
     "firewall": [
         {"event_type": "blocked_connection", "severity": "low", "description": "Blocked outbound connection to suspicious IP"},
@@ -26,43 +26,15 @@ EVENT_TEMPLATES = {
         {"event_type": "config_change", "severity": "medium", "description": "Firewall configuration modified"},
         {"event_type": "vpn_connection", "severity": "low", "description": "VPN tunnel established"},
     ],
-    "ids": [
-        {"event_type": "signature_match", "severity": "high", "description": "IDS signature match: possible exploit attempt"},
-        {"event_type": "anomaly_detected", "severity": "medium", "description": "Anomalous network behavior detected"},
-        {"event_type": "malware_signature", "severity": "critical", "description": "Known malware signature detected in traffic"},
-        {"event_type": "protocol_violation", "severity": "medium", "description": "Protocol violation detected"},
-    ],
     "endpoint": [
         {"event_type": "malware_detected", "severity": "critical", "description": "Malware detected and quarantined on workstation"},
         {"event_type": "usb_device", "severity": "medium", "description": "Unauthorized USB device connected"},
         {"event_type": "suspicious_process", "severity": "high", "description": "Suspicious process execution detected"},
-        {"event_type": "auth_failure", "severity": "medium", "description": "Multiple failed login attempts on workstation"},
+        {"event_type": "auth_failure", "severity": "medium", "description": "Multiple failed login attempts on endpoint"},
         {"event_type": "software_install", "severity": "low", "description": "New software installed on endpoint"},
-    ],
-    "active_directory": [
-        {"event_type": "auth_failure", "severity": "medium", "description": "Failed authentication attempt"},
         {"event_type": "privilege_escalation", "severity": "critical", "description": "Privilege escalation detected"},
         {"event_type": "account_lockout", "severity": "high", "description": "User account locked out after failed attempts"},
-        {"event_type": "group_membership_change", "severity": "medium", "description": "User added to privileged group"},
-        {"event_type": "password_change", "severity": "low", "description": "Password changed for user account"},
-    ],
-    "email": [
-        {"event_type": "phishing_attempt", "severity": "high", "description": "Potential phishing email detected and blocked"},
-        {"event_type": "malicious_attachment", "severity": "critical", "description": "Malicious attachment blocked"},
-        {"event_type": "spam_detected", "severity": "low", "description": "Spam email filtered"},
-        {"event_type": "suspicious_sender", "severity": "medium", "description": "Email from suspicious sender quarantined"},
-    ],
-    "application": [
-        {"event_type": "database_error", "severity": "medium", "description": "CRM database connection error"},
-        {"event_type": "unauthorized_access", "severity": "high", "description": "Unauthorized access attempt to patient records"},
-        {"event_type": "data_export", "severity": "medium", "description": "Large data export from application"},
-        {"event_type": "session_hijack", "severity": "critical", "description": "Possible session hijacking detected"},
-    ],
-    "network": [
-        {"event_type": "bandwidth_anomaly", "severity": "medium", "description": "Unusual bandwidth consumption detected"},
-        {"event_type": "dns_exfiltration", "severity": "high", "description": "Possible DNS data exfiltration attempt"},
-        {"event_type": "lateral_movement", "severity": "critical", "description": "Lateral movement detected in network"},
-        {"event_type": "connection_refused", "severity": "low", "description": "Connection refused to internal service"},
+        {"event_type": "file_integrity", "severity": "medium", "description": "File integrity change detected on endpoint"},
     ],
 }
 
@@ -78,12 +50,7 @@ def generate_raw_log(source: str, event_type: str) -> str:
 
     templates = {
         "firewall": f"{timestamp} FW-001 BLOCK src={random.choice(EXTERNAL_IPS)} dst={random.choice(INTERNAL_IPS)} proto=TCP dport={random.choice([22, 23, 445, 3389, 8080])}",
-        "ids": f"{timestamp} [**] [1:{random.randint(1000, 9999)}:{random.randint(1, 10)}] {event_type.upper()} [**] {random.choice(EXTERNAL_IPS)} -> {random.choice(INTERNAL_IPS)}",
-        "endpoint": f"{timestamp} ENDPOINT-{random.randint(100, 999)} Event={event_type} User={random.choice(USERS)} Status=Detected",
-        "active_directory": f"{timestamp} EventID={random.choice([4625, 4624, 4728, 4732])} User={random.choice(USERS)} Domain=AUDIOPRO Workstation={random.choice(SITES)}",
-        "email": f"{timestamp} SMTP From=<{random.choice(['suspicious', 'unknown', 'spam'])}@{random.choice(['malware.net', 'phish.com', 'bad.org'])}> To=<{random.choice(USERS)}@audiopro.fr>",
-        "application": f"{timestamp} APP-LOG Level=WARN Module=CRM Action={event_type} User={random.choice(USERS)} IP={random.choice(INTERNAL_IPS)}",
-        "network": f"{timestamp} FLOW src={random.choice(INTERNAL_IPS)} dst={random.choice(EXTERNAL_IPS)} bytes={random.randint(100, 1000000)} proto=TCP",
+        "endpoint": f"{timestamp} ENDPOINT-{random.randint(100, 999)} Event={event_type} User={random.choice(USERS)} Host={random.choice(SITES)} Status=Detected",
     }
 
     return templates.get(source, f"{timestamp} {event_type}")
@@ -181,32 +148,32 @@ def generate_attack_scenario():
         # Phase 1: Reconnaissance
         {"source": "firewall", "event_type": "port_scan", "severity": "high",
          "description": f"[{site}] Port scan from {attacker_ip}"},
-        {"source": "ids", "event_type": "signature_match", "severity": "medium",
-         "description": f"[{site}] Network reconnaissance detected"},
+        {"source": "firewall", "event_type": "blocked_connection", "severity": "medium",
+         "description": f"[{site}] Multiple blocked connections from {attacker_ip}"},
 
-        # Phase 2: Initial Access
-        {"source": "email", "event_type": "phishing_attempt", "severity": "high",
-         "description": f"[{site}] Phishing email targeting {target_user}"},
-        {"source": "endpoint", "event_type": "suspicious_process", "severity": "high",
-         "description": f"[{site}] Macro execution in Office document"},
+        # Phase 2: Initial Access — brute force
+        {"source": "endpoint", "event_type": "auth_failure", "severity": "medium",
+         "description": f"[{site}] Failed SSH login attempt for {target_user} from {attacker_ip}"},
+        {"source": "endpoint", "event_type": "auth_failure", "severity": "high",
+         "description": f"[{site}] Multiple failed login attempts for {target_user}"},
+        {"source": "endpoint", "event_type": "account_lockout", "severity": "high",
+         "description": f"[{site}] Account {target_user} locked after repeated failures"},
 
         # Phase 3: Execution
+        {"source": "endpoint", "event_type": "suspicious_process", "severity": "high",
+         "description": f"[{site}] Suspicious process execution on {target_user}'s workstation"},
         {"source": "endpoint", "event_type": "malware_detected", "severity": "critical",
          "description": f"[{site}] Malicious payload executed on {target_user}'s workstation"},
-        {"source": "active_directory", "event_type": "auth_failure", "severity": "medium",
-         "description": f"[{site}] Multiple failed auth attempts for {target_user}"},
 
-        # Phase 4: Lateral Movement
-        {"source": "network", "event_type": "lateral_movement", "severity": "critical",
-         "description": f"[{site}] Lateral movement detected from compromised host"},
-        {"source": "active_directory", "event_type": "privilege_escalation", "severity": "critical",
+        # Phase 4: Privilege Escalation
+        {"source": "endpoint", "event_type": "privilege_escalation", "severity": "critical",
          "description": f"[{site}] Privilege escalation attempt detected"},
+        {"source": "endpoint", "event_type": "file_integrity", "severity": "medium",
+         "description": f"[{site}] Critical system file modified"},
 
-        # Phase 5: Data Access
-        {"source": "application", "event_type": "unauthorized_access", "severity": "critical",
-         "description": f"[{site}] Unauthorized access to patient database"},
-        {"source": "network", "event_type": "dns_exfiltration", "severity": "critical",
-         "description": f"[{site}] Possible data exfiltration via DNS"},
+        # Phase 5: Firewall anomaly (exfiltration attempt)
+        {"source": "firewall", "event_type": "intrusion_attempt", "severity": "critical",
+         "description": f"[{site}] Unusual outbound data transfer detected from compromised host"},
     ]
 
     for i, event in enumerate(scenario):

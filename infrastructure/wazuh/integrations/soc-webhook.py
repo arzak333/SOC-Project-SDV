@@ -36,23 +36,11 @@ def map_severity(level):
 
 
 def map_source(groups):
-    """Map Wazuh rule groups to SOC event source."""
+    """Map Wazuh rule groups to SOC event source (firewall or endpoint)."""
     groups_str = ','.join(groups) if isinstance(groups, list) else str(groups)
 
-    if any(g in groups_str for g in ['authentication', 'sshd', 'pam', 'login']):
-        return 'active_directory'
-    elif any(g in groups_str for g in ['firewall', 'iptables', 'pf']):
+    if any(g in groups_str for g in ['firewall', 'iptables', 'pf']):
         return 'firewall'
-    elif any(g in groups_str for g in ['ids', 'suricata', 'snort']):
-        return 'ids'
-    elif any(g in groups_str for g in ['syscheck', 'fim']):
-        return 'endpoint'
-    elif any(g in groups_str for g in ['web', 'apache', 'nginx']):
-        return 'application'
-    elif any(g in groups_str for g in ['mail', 'postfix', 'smtp']):
-        return 'email'
-    elif any(g in groups_str for g in ['network', 'scan', 'traffic']):
-        return 'network'
     else:
         return 'endpoint'
 

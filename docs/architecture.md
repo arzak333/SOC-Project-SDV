@@ -66,7 +66,7 @@
 ├──────────────────────────────────────────────────┤
 │ id          │ UUID (PK)                          │
 │ timestamp   │ TIMESTAMP                          │
-│ source      │ ENUM (firewall/ids/endpoint/...)   │
+│ source      │ ENUM (firewall/endpoint)           │
 │ event_type  │ VARCHAR(100)                       │
 │ severity    │ ENUM (critical/high/medium/low)    │
 │ description │ TEXT                               │
