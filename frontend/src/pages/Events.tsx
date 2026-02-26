@@ -31,17 +31,18 @@ export default function Events() {
   const [severityFilter, setSeverityFilter] = useState<string>(locationState?.severity ?? '')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [sourceFilter, setSourceFilter] = useState<string>('')
+  const [perPage, setPerPage] = useState(20)
 
   useEffect(() => {
     loadEvents()
-  }, [page, search, siteIdFilter, severityFilter, statusFilter, sourceFilter])
+  }, [page, perPage, search, siteIdFilter, severityFilter, statusFilter, sourceFilter])
 
   async function loadEvents() {
     setLoading(true)
     try {
       const data = await fetchEvents({
         page,
-        per_page: 20,
+        per_page: perPage,
         site_id: siteIdFilter || undefined,
         severity: severityFilter || undefined,
         status: statusFilter || undefined,
@@ -179,6 +180,20 @@ export default function Events() {
                 { value: 'email', label: 'Email' },
                 { value: 'active_directory', label: 'Active Directory' },
                 { value: 'application', label: 'Application' },
+              ]}
+            />
+
+            <CustomSelect
+              value={String(perPage)}
+              onChange={(v) => { setPerPage(Number(v)); setPage(1) }}
+              placeholder="20 / page"
+              options={[
+                { value: '10', label: '10 / page' },
+                { value: '20', label: '20 / page' },
+                { value: '50', label: '50 / page' },
+                { value: '100', label: '100 / page' },
+                { value: '200', label: '200 / page' },
+                { value: '500', label: '500 / page' },
               ]}
             />
 

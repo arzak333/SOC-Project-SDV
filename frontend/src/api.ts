@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident } from './types'
+import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident, HeatmapEntry } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -52,6 +52,11 @@ export async function fetchDashboardTrends(): Promise<{
 
 export async function fetchSitesSummary(): Promise<{ sites: SiteSummary[] }> {
   const { data } = await api.get('/dashboard/sites')
+  return data
+}
+
+export async function fetchDashboardHeatmap(): Promise<{ heatmap: HeatmapEntry[] }> {
+  const { data } = await api.get('/dashboard/heatmap')
   return data
 }
 

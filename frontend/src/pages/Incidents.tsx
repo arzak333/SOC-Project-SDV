@@ -159,9 +159,9 @@ export default function Incidents() {
             <CustomSelect
               value={statusFilter}
               onChange={(v) => { setStatusFilter(v); setPage(1) }}
-              placeholder="All Statuses"
+              placeholder="All Status"
               options={[
-                { value: '', label: 'All Statuses' },
+                { value: '', label: 'All Status' },
                 { value: 'new', label: 'New' },
                 { value: 'open', label: 'Open' },
                 { value: 'investigating', label: 'Investigating' },

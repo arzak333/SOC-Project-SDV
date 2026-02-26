@@ -13,7 +13,7 @@ def list_events():
     page = request.args.get('page', 1, type=int)
     limit = request.args.get('limit', type=int)
     per_page = limit if limit else request.args.get('per_page', 50, type=int)
-    per_page = min(per_page, 100)  # Max 100 per page
+    per_page = min(per_page, 500)  # Max 500 per page
 
     # Build query
     query = Event.query
