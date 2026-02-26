@@ -231,7 +231,17 @@ export default function EndpointStatusCard({
                                             <p className="font-medium text-slate-200 group-hover:text-white transition-colors">
                                                 {endpoint.name}
                                             </p>
-                                            {endpoint.location && (
+                                            {endpoint.status === 'offline' && (
+                                                <p className="text-xs text-red-400/70">
+                                                    {endpoint.critical_alerts} critical alert{endpoint.critical_alerts !== 1 ? 's' : ''} detected
+                                                </p>
+                                            )}
+                                            {endpoint.status === 'degraded' && (
+                                                <p className="text-xs text-yellow-400/70">
+                                                    {endpoint.event_count_24h} events, {endpoint.critical_alerts > 0 ? `${endpoint.critical_alerts} critical` : 'high severity alerts'}
+                                                </p>
+                                            )}
+                                            {endpoint.status === 'online' && endpoint.location && (
                                                 <p className="text-xs text-slate-500">{endpoint.location}</p>
                                             )}
                                         </div>

@@ -42,13 +42,22 @@ export interface AlertRule {
 export interface DashboardStats {
   total_events: number
   events_last_24h: number
+  events_prev_24h: number
   critical_open: number
+  critical_prev_24h: number
   active_alerts: number
   total_sites: number
   open_incidents: number
   by_status: Record<string, number>
   by_severity: Record<string, number>
   by_source: Record<string, number>
+}
+
+export interface TopIP {
+  ip: string
+  count: number
+  critical: number
+  high: number
 }
 
 export interface HeatmapEntry {

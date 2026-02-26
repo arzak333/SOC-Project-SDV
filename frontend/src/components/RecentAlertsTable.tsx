@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
-import { ChevronDown, User } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { ChevronDown, User, Eye, UserCheck } from 'lucide-react'
 import clsx from 'clsx'
 import { Severity, Analyst } from '../types'
 import { fetchAnalysts, updateEventStatus } from '../api'
 import { useRole } from '../context/RoleContext'
+import { useAuth } from '../context/AuthContext'
 
 interface AlertRow {
     id: string
@@ -40,9 +41,30 @@ export default function RecentAlertsTable({
     filterLabel,
 }: RecentAlertsTableProps) {
     const { canAssign } = useRole()
+    const { user } = useAuth()
     const [assignDropdownId, setAssignDropdownId] = useState<string | null>(null)
     const [quickAssignOptions, setQuickAssignOptions] = useState<Analyst[]>([])
     const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>({})
+
+    // Track previous alert IDs for new-entry animation
+    const prevIdsRef = useRef<Set<string>>(new Set())
+    const [newIds, setNewIds] = useState<Set<string>>(new Set())
+
+    useEffect(() => {
+        const currentIds = new Set(alerts.map((a) => a.id))
+        const freshIds = new Set<string>()
+        for (const id of currentIds) {
+            if (!prevIdsRef.current.has(id) && prevIdsRef.current.size > 0) {
+                freshIds.add(id)
+            }
+        }
+        if (freshIds.size > 0) {
+            setNewIds(freshIds)
+            const timer = setTimeout(() => setNewIds(new Set()), 2000)
+            return () => clearTimeout(timer)
+        }
+        prevIdsRef.current = currentIds
+    }, [alerts])
 
     useEffect(() => {
         fetchAnalysts()
@@ -57,7 +79,7 @@ export default function RecentAlertsTable({
 
     const handleRowClick = (alertId: string, e: React.MouseEvent) => {
         // Don't trigger row click if clicking on assignee dropdown
-        if ((e.target as HTMLElement).closest('.assignee-dropdown')) {
+        if ((e.target as HTMLElement).closest('.assignee-dropdown') || (e.target as HTMLElement).closest('.actions-column')) {
             return
         }
         onAlertClick?.(alertId)
@@ -108,13 +130,14 @@ export default function RecentAlertsTable({
                             <th className="pb-3 pr-4">Alert Name</th>
                             <th className="pb-3 pr-4">Source</th>
                             <th className="pb-3 pr-4">Time</th>
-                            <th className="pb-3">Assignee</th>
+                            <th className="pb-3 pr-4">Assignee</th>
+                            <th className="pb-3">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700/50">
                         {displayedAlerts.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="py-8 text-center text-slate-500">
+                                <td colSpan={6} className="py-8 text-center text-slate-500">
                                     {filteredSource
                                         ? `No alerts from ${filterLabel}`
                                         : 'No recent alerts'}
@@ -127,7 +150,8 @@ export default function RecentAlertsTable({
                                     onClick={(e) => handleRowClick(alert.id, e)}
                                     className={clsx(
                                         'hover:bg-slate-700/30 transition-all cursor-pointer group',
-                                        'animate-fade-in'
+                                        'animate-fade-in',
+                                        newIds.has(alert.id) && 'animate-new-entry'
                                     )}
                                     style={{ animationDelay: `${index * 50}ms` }}
                                 >
@@ -196,6 +220,29 @@ export default function RecentAlertsTable({
                                                 {alert.assignee ?? 'Unassigned'}
                                             </span>
                                         )}
+                                    </td>
+                                    <td className="py-3 actions-column">
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onAlertClick?.(alert.id) }}
+                                                className="p-1.5 rounded hover:bg-slate-700 text-slate-500 hover:text-blue-400 transition-colors"
+                                                title="View details"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
+                                            {canAssign && !(assigneeOverrides[alert.id] ?? alert.assignee) && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        if (user?.username) handleAssign(alert.id, user.username)
+                                                    }}
+                                                    className="p-1.5 rounded hover:bg-slate-700 text-slate-500 hover:text-green-400 transition-colors"
+                                                    title="Assign to me"
+                                                >
+                                                    <UserCheck className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))

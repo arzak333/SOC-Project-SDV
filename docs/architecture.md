@@ -66,7 +66,7 @@
 ├──────────────────────────────────────────────────┤
 │ id          │ UUID (PK)                          │
 │ timestamp   │ TIMESTAMP                          │
-│ source      │ ENUM (firewall/endpoint)           │
+│ source      │ ENUM (firewall/endpoint/application)│
 │ event_type  │ VARCHAR(100)                       │
 │ severity    │ ENUM (critical/high/medium/low)    │
 │ description │ TEXT                               │
@@ -75,7 +75,7 @@
 │ status      │ ENUM (new/investigating/resolved)  │
 │ assigned_to │ VARCHAR(100)                       │
 │ site_id     │ VARCHAR(50) - endpoint-pc-01/02,   │
-│             │   firewall-gw                      │
+│             │   firewall-gw, glpi-crm            │
 │ incident_id │ UUID (FK → incidents, SET NULL)    │
 │ created_at  │ TIMESTAMP                          │
 │ updated_at  │ TIMESTAMP                          │

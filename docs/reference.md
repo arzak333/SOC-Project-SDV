@@ -100,7 +100,7 @@ All endpoints are prefixed with `/api`.
 {
   "id": "uuid",
   "timestamp": "2025-01-15T10:30:00Z",
-  "source": "firewall|endpoint",
+  "source": "firewall|endpoint|application",
   "event_type": "auth_failure|port_scan|malware_detected|data_exfiltration",
   "severity": "critical|high|medium|low",
   "description": "Human readable summary",

@@ -11,6 +11,7 @@ import EndpointStatusCard from '../components/EndpointStatusCard'
 import AlertDetailModal from '../components/AlertDetailModal'
 import SeverityTrendChart from '../components/SeverityTrendChart'
 import ActivityHeatmap from '../components/ActivityHeatmap'
+import TopSourceIPs from '../components/TopSourceIPs'
 import { ToastContainer, toast } from '../components/Toast'
 import clsx from 'clsx'
 
@@ -24,6 +25,7 @@ type TimeRange = '5m' | '15m' | '30m' | '1h' | '6h' | '24h' | '7d' | '30d'
 const SOURCE_COLORS: Record<string, string> = {
   firewall: '#ef4444',    // red
   endpoint: '#3b82f6',    // blue
+  application: '#f59e0b', // amber (GLPI)
 }
 
 export default function Dashboard({ realtimeEvents }: DashboardProps) {
@@ -45,6 +47,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null)
   const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [isLiveMode, setIsLiveMode] = useState(true)
+  const [refreshCounter, setRefreshCounter] = useState(0)
 
   const loadData = useCallback(async (currentTimeRange: TimeRange = timeRange) => {
     try {
@@ -58,6 +61,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
       setTrends(trendsData)
       setCriticalAlerts(eventsData.events || [])
       setHeatmapData(heatmapResult.heatmap || [])
+      setRefreshCounter((c: number) => c + 1)
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     } finally {
@@ -167,8 +171,14 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
       assignee: e.assigned_to,
     }))
 
-  // Trend: null until we have real comparison data
-  const eventsTrend: number | null = null
+  // Trend indicators: % change vs previous 24h
+  const eventsTrend = stats?.events_prev_24h
+    ? Math.round(((stats.events_last_24h - stats.events_prev_24h) / stats.events_prev_24h) * 100)
+    : null
+
+  const criticalTrend = stats?.critical_prev_24h
+    ? Math.round(((stats.critical_open - stats.critical_prev_24h) / stats.critical_prev_24h) * 100)
+    : null
 
   return (
     <div className="space-y-6">
@@ -222,6 +232,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
           icon={<AlertTriangle className="w-6 h-6" />}
           label="Critical Alerts Triggered"
           value={stats?.critical_open ?? 0}
+          trend={criticalTrend !== null ? { value: criticalTrend, isPositive: criticalTrend <= 0 } : undefined}
           linkTo="/alerts"
           linkParams={{ status: 'new,investigating' }}
         />
@@ -281,8 +292,9 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
             filterLabel={selectedSourceLabel || undefined}
           />
         </div>
-        <div>
+        <div className="space-y-4">
           <EndpointStatusCard maxDisplay={5} />
+          <TopSourceIPs refreshTrigger={refreshCounter} />
         </div>
       </div>
 
@@ -310,6 +322,7 @@ function formatSourceName(source: string): string {
   const names: Record<string, string> = {
     firewall: 'Firewall',
     endpoint: 'Endpoints',
+    application: 'GLPI',
   }
   return names[source] || source.charAt(0).toUpperCase() + source.slice(1)
 }

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident } from './types'
+import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident, HeatmapEntry, TopIP } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -139,6 +139,16 @@ export async function fetchDashboardTrendsWithRange(timeframe: string): Promise<
   timeframe: string
 }> {
   const { data } = await api.get('/dashboard/trends', { params: { timeframe } })
+  return data
+}
+
+export async function fetchDashboardHeatmap(): Promise<{ heatmap: HeatmapEntry[] }> {
+  const { data } = await api.get('/dashboard/heatmap')
+  return data
+}
+
+export async function fetchTopIPs(hours?: number): Promise<{ top_ips: TopIP[] }> {
+  const { data } = await api.get('/dashboard/top-ips', { params: hours ? { hours } : {} })
   return data
 }
 

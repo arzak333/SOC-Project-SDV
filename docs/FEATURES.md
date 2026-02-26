@@ -50,7 +50,7 @@ This file tracks all features implemented in the AudioSOC project.
 - Batch ingestion (`POST /api/ingest/batch`)
 - Input validation and sanitization
 - Real-time WebSocket broadcast on ingestion
-- Support for 2 event sources matching real infrastructure: firewall, endpoint
+- Support for 3 event sources matching real infrastructure: firewall, endpoint, application (GLPI)
 
 ---
 

@@ -80,7 +80,7 @@ The alert engine is now a **full correlation engine**:
   - Paginated API (`GET /api/incidents`, `GET /api/incidents/:id`, `PATCH /api/incidents/:id`)
 - [x] **Safe schema migration** (`migrate_db.py`) — `db.create_all()` + idempotent `ALTER TABLE` on startup; no Alembic dependency
 - [x] **Custom dropdown component** (`CustomSelect.tsx`) — replaces native `<select>` across Events and Incidents pages; fully theme-aware (CSS variables), works in both dark/light mode
-- [x] **Real infrastructure only** — log generator constrained to `endpoint-pc-01`, `endpoint-pc-02`, `firewall-gw`; fake AUDIO_* site data removed from DB
+- [x] **Real infrastructure only** — log generator constrained to `endpoint-pc-01`, `endpoint-pc-02`, `firewall-gw`, `glpi-crm`; fake AUDIO_* site data removed from DB
 - [x] **pytest suite** — backend test coverage for events, alert rules, dashboard, playbook runner
 
 ### In Progress 🚧

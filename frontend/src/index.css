@@ -162,6 +162,16 @@ body {
   animation: fade-in 0.3s ease-out forwards;
 }
 
+/* New entry highlight (live feed) */
+@keyframes new-entry {
+  0% { background-color: rgba(59, 130, 246, 0.3); }
+  100% { background-color: transparent; }
+}
+
+.animate-new-entry {
+  animation: new-entry 2s ease-out;
+}
+
 /* Live indicator enhanced */
 @keyframes live-glow {
   0%, 100% {

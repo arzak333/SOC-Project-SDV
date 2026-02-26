@@ -15,7 +15,7 @@ from typing import Optional
 API_URL = "http://localhost:5000/api/ingest"
 
 # Sites — matches real infrastructure instances
-SITES = ["endpoint-pc-01", "endpoint-pc-02", "firewall-gw"]
+SITES = ["endpoint-pc-01", "endpoint-pc-02", "firewall-gw", "glpi-crm"]
 
 # Event templates by source — only real infrastructure sources
 EVENT_TEMPLATES = {
@@ -36,6 +36,14 @@ EVENT_TEMPLATES = {
         {"event_type": "account_lockout", "severity": "high", "description": "User account locked out after failed attempts"},
         {"event_type": "file_integrity", "severity": "medium", "description": "File integrity change detected on endpoint"},
     ],
+    "application": [
+        {"event_type": "auth_failure", "severity": "medium", "description": "Failed login attempt on GLPI console"},
+        {"event_type": "config_change", "severity": "high", "description": "GLPI configuration modified"},
+        {"event_type": "asset_change", "severity": "low", "description": "IT asset record created or updated in GLPI"},
+        {"event_type": "user_management", "severity": "medium", "description": "GLPI user account created or modified"},
+        {"event_type": "api_access", "severity": "low", "description": "GLPI REST API access from external IP"},
+        {"event_type": "data_export", "severity": "high", "description": "Bulk data export performed from GLPI"},
+    ],
 }
 
 # IP addresses for realism
@@ -51,6 +59,7 @@ def generate_raw_log(source: str, event_type: str) -> str:
     templates = {
         "firewall": f"{timestamp} FW-001 BLOCK src={random.choice(EXTERNAL_IPS)} dst={random.choice(INTERNAL_IPS)} proto=TCP dport={random.choice([22, 23, 445, 3389, 8080])}",
         "endpoint": f"{timestamp} ENDPOINT-{random.randint(100, 999)} Event={event_type} User={random.choice(USERS)} Host={random.choice(SITES)} Status=Detected",
+        "application": f"{timestamp} GLPI [access] {event_type} user={random.choice(USERS)} ip={random.choice(EXTERNAL_IPS)} action={event_type}",
     }
 
     return templates.get(source, f"{timestamp} {event_type}")

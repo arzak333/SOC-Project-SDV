@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from sqlalchemy import func
+from sqlalchemy import func, case
 from datetime import datetime, timedelta
 from app import db
 from app.models import Event, EventStatus, EventSeverity, EventSource, Incident, IncidentStatus
@@ -19,6 +19,21 @@ def get_stats():
 
     # Events in last 24h
     events_24h = Event.query.filter(Event.timestamp >= last_24h).count()
+
+    # Events in previous 24h (for trend comparison)
+    prev_24h_start = last_24h - timedelta(hours=24)
+    events_prev_24h = Event.query.filter(
+        Event.timestamp >= prev_24h_start,
+        Event.timestamp < last_24h
+    ).count()
+
+    # Critical open in previous 24h (for trend comparison)
+    critical_prev_24h = Event.query.filter(
+        Event.severity == EventSeverity.CRITICAL,
+        Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
+        Event.created_at >= prev_24h_start,
+        Event.created_at < last_24h
+    ).count()
 
     # Events by status
     status_counts = dict(
@@ -63,7 +78,9 @@ def get_stats():
     return jsonify({
         'total_events': total_events,
         'events_last_24h': events_24h,
+        'events_prev_24h': events_prev_24h,
         'critical_open': critical_open,
+        'critical_prev_24h': critical_prev_24h,
         'active_alerts': active_alerts,
         'total_sites': total_sites,
         'open_incidents': open_incidents,
@@ -194,6 +211,45 @@ def get_heatmap():
     )
     data = [{'day': int(r.day), 'hour': int(r.hour), 'count': r.count} for r in results]
     return jsonify({'heatmap': data})
+
+
+@dashboard_bp.route('/dashboard/top-ips', methods=['GET'])
+def get_top_ips():
+    """Get top source IPs by event count (from JSONB metadata)."""
+    hours = request.args.get('hours', 24, type=int)
+    since = datetime.utcnow() - timedelta(hours=hours)
+
+    ip_field = Event.event_metadata['source_ip'].astext
+
+    results = (
+        db.session.query(
+            ip_field.label('ip'),
+            func.count(Event.id).label('count'),
+            func.sum(case(
+                (Event.severity == EventSeverity.CRITICAL, 1),
+                else_=0
+            )).label('critical'),
+            func.sum(case(
+                (Event.severity == EventSeverity.HIGH, 1),
+                else_=0
+            )).label('high')
+        )
+        .filter(
+            Event.timestamp >= since,
+            ip_field.isnot(None),
+            ip_field != 'null',
+            ip_field != ''
+        )
+        .group_by(ip_field)
+        .order_by(func.count(Event.id).desc())
+        .limit(10)
+        .all()
+    )
+
+    return jsonify({'top_ips': [
+        {'ip': r.ip, 'count': r.count, 'critical': int(r.critical), 'high': int(r.high)}
+        for r in results
+    ]})
 
 
 @dashboard_bp.route('/dashboard/sites', methods=['GET'])

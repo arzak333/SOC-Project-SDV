@@ -49,7 +49,6 @@ celerybeat.pid
 
 # AI meta files (local use only)
 CLAUDE.md
-AGENTS.md
 session_log.md
 CHANGELOG.md
 
