@@ -35,7 +35,7 @@ All endpoints are prefixed with `/api`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/dashboard/stats` | Statistics (by_severity, by_source, by_status, critical_open) |
+| GET | `/api/dashboard/stats` | Statistics (by_severity, by_source, by_status, total_rule_triggers, critical_open) |
 | GET | `/api/dashboard/trends` | Event trends (timeframe: `5m`, `15m`, `30m`, `1h`, `6h`, `24h`, `7d`, `30d`) |
 | GET | `/api/dashboard/sites` | Summary by site |
 | GET | `/api/dashboard/heatmap` | Activity heatmap (7 days × 24 hours event density) |

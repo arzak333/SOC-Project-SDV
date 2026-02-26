@@ -176,10 +176,6 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
     ? Math.round(((stats.events_last_24h - stats.events_prev_24h) / stats.events_prev_24h) * 100)
     : null
 
-  const criticalTrend = stats?.critical_prev_24h
-    ? Math.round(((stats.critical_open - stats.critical_prev_24h) / stats.critical_prev_24h) * 100)
-    : null
-
   return (
     <div className="space-y-6">
       {/* Toast container for notifications */}
@@ -220,7 +216,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <StatCard
           icon={<Activity className="w-6 h-6" />}
           label="Security Events"
@@ -230,11 +226,9 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
         />
         <StatCard
           icon={<AlertTriangle className="w-6 h-6" />}
-          label="Critical Alerts Triggered"
-          value={stats?.critical_open ?? 0}
-          trend={criticalTrend !== null ? { value: criticalTrend, isPositive: criticalTrend <= 0 } : undefined}
+          label="Alerts Triggered"
+          value={stats?.total_rule_triggers ?? 0}
           linkTo="/alerts"
-          linkParams={{ status: 'new,investigating' }}
         />
         <StatCard
           icon={<ShieldAlert className="w-6 h-6" />}
@@ -252,7 +246,6 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
           icon={<Users className="w-6 h-6" />}
           label="Sources"
           value={stats?.by_source ? Object.keys(stats.by_source).length : 0}
-          linkTo="/events"
         />
       </div>
 

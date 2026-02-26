@@ -45,6 +45,7 @@ export interface DashboardStats {
   events_prev_24h: number
   critical_open: number
   critical_prev_24h: number
+  total_rule_triggers: number
   active_alerts: number
   total_sites: number
   open_incidents: number

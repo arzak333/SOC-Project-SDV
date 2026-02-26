@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import func, case
 from datetime import datetime, timedelta
 from app import db
-from app.models import Event, EventStatus, EventSeverity, EventSource, Incident, IncidentStatus
+from app.models import Event, EventStatus, EventSeverity, EventSource, Incident, IncidentStatus, AlertRule
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -70,6 +70,9 @@ def get_stats():
     # Unique sites
     total_sites = db.session.query(func.count(func.distinct(Event.site_id))).scalar() or 0
 
+    # Total alert rule triggers (sum of trigger_count across all rules)
+    total_rule_triggers = db.session.query(func.coalesce(func.sum(AlertRule.trigger_count), 0)).scalar()
+
     # Open incidents
     open_incidents = Incident.query.filter(
         Incident.status.in_([IncidentStatus.NEW, IncidentStatus.OPEN, IncidentStatus.INVESTIGATING])
@@ -81,6 +84,7 @@ def get_stats():
         'events_prev_24h': events_prev_24h,
         'critical_open': critical_open,
         'critical_prev_24h': critical_prev_24h,
+        'total_rule_triggers': total_rule_triggers,
         'active_alerts': active_alerts,
         'total_sites': total_sites,
         'open_incidents': open_incidents,
