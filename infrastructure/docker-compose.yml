@@ -124,6 +124,31 @@ services:
     restart: unless-stopped
 
   # ============================================================
+  # SURICATA IDS (Network intrusion detection on DMZ)
+  # ============================================================
+
+  suricata:
+    build:
+      context: ./suricata
+      dockerfile: Dockerfile
+    hostname: suricata-ids
+    environment:
+      WAZUH_MANAGER: wazuh-manager
+      ENDPOINT_NAME: suricata-ids
+      SITE_ID: AUDIO_001
+    cap_add:
+      - NET_RAW
+      - SYS_NICE
+    networks:
+      - dmz-net
+      - infra-net
+    volumes:
+      - suricata_logs:/var/log/suricata
+    depends_on:
+      - wazuh-manager
+    restart: unless-stopped
+
+  # ============================================================
   # SIMULATED ENDPOINTS (Linux containers acting as workstations)
   # ============================================================
 
@@ -227,3 +252,4 @@ volumes:
   glpi_db_data:
   glpi_data:
   firewall_logs:
+  suricata_logs:
