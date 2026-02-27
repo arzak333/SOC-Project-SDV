@@ -75,9 +75,24 @@ def generate_raw_log(source: str, event_type: str) -> str:
     return templates.get(source, f"{timestamp} {event_type}")
 
 
+SOURCE_WEIGHTS = {
+    # Realistic SOC distribution:
+    # Firewalls are the noisiest (perimeter, NAT, allow/deny for all traffic)
+    # Endpoints second (EDR agents on workstations/servers)
+    # IDS is filtered/alerting layer — less volume than raw firewall
+    # Application (GLPI) is low-frequency IT ops events
+    "firewall": 40,
+    "endpoint": 30,
+    "application": 10,
+    "ids": 20,
+}
+
+
 def generate_event() -> dict:
     """Generate a random security event."""
-    source = random.choice(list(EVENT_TEMPLATES.keys()))
+    sources = list(EVENT_TEMPLATES.keys())
+    weights = [SOURCE_WEIGHTS[s] for s in sources]
+    source = random.choices(sources, weights=weights, k=1)[0]
     template = random.choice(EVENT_TEMPLATES[source])
     site = random.choice(SITES)
 
