@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { TrendingUp, TrendingDown, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useLanguage } from '../context/LanguageContext'
 import clsx from 'clsx'
 
 interface StatCardProps {
@@ -10,6 +11,7 @@ interface StatCardProps {
     trend?: {
         value: number
         isPositive?: boolean
+        severity?: 'normal' | 'warning' | 'critical'
     }
     onClick?: () => void
     linkTo?: string
@@ -18,6 +20,7 @@ interface StatCardProps {
 
 export default function StatCard({ icon, label, value, trend, onClick, linkTo, linkParams }: StatCardProps) {
     const navigate = useNavigate()
+    const { t } = useLanguage()
     const isClickable = onClick || linkTo
 
     const handleClick = () => {
@@ -49,16 +52,19 @@ export default function StatCard({ icon, label, value, trend, onClick, linkTo, l
                         <div
                             className={clsx(
                                 'flex items-center gap-1 mt-2 text-sm',
-                                trend.isPositive !== false ? 'text-green-400' : 'text-red-400'
+                                trend.severity === 'critical' ? 'text-red-400'
+                                  : trend.severity === 'warning' ? 'text-amber-400'
+                                  : trend.isPositive !== false ? 'text-green-400'
+                                  : 'text-red-400'
                             )}
                         >
                             {trend.isPositive !== false ? (
-                                <TrendingUp className="w-4 h-4" />
-                            ) : (
                                 <TrendingDown className="w-4 h-4" />
+                            ) : (
+                                <TrendingUp className="w-4 h-4" />
                             )}
                             <span>{trend.value}%</span>
-                            <span className="text-slate-500">from yesterday</span>
+                            <span className="text-slate-500">{t('dashboard.fromYesterday')}</span>
                         </div>
                     )}
                 </div>

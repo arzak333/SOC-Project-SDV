@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useLanguage } from '../context/LanguageContext'
 
 interface DailyEntry {
   date: string
@@ -21,10 +22,12 @@ const COLORS = {
 }
 
 export default function SeverityTrendChart({ data, loading }: Props) {
+  const { t } = useLanguage()
+
   if (loading) {
     return (
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-        <div className="h-[260px] flex items-center justify-center text-gray-500">Loading...</div>
+        <div className="h-[260px] flex items-center justify-center text-gray-500">{t('common.loading')}</div>
       </div>
     )
   }
@@ -32,9 +35,9 @@ export default function SeverityTrendChart({ data, loading }: Props) {
   if (!data || data.length === 0) {
     return (
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-        <h3 className="text-sm font-semibold text-gray-300 mb-3">Tendance par Sévérité</h3>
+        <h3 className="text-sm font-semibold text-gray-300 mb-3">{t('severityTrend.title')}</h3>
         <div className="h-[260px] flex items-center justify-center text-gray-500 text-sm">
-          Sélectionnez 7j ou 30j pour afficher la tendance
+          {t('severityTrend.selectRange')}
         </div>
       </div>
     )
@@ -48,7 +51,7 @@ export default function SeverityTrendChart({ data, loading }: Props) {
 
   return (
     <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">Tendance par Sévérité</h3>
+      <h3 className="text-sm font-semibold text-gray-300 mb-3">{t('severityTrend.title')}</h3>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={formatted} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
           <XAxis
@@ -72,10 +75,10 @@ export default function SeverityTrendChart({ data, loading }: Props) {
             iconSize={8}
             wrapperStyle={{ fontSize: 12, color: '#94a3b8' }}
           />
-          <Bar dataKey="critical" name="Critical" stackId="a" fill={COLORS.critical} radius={[0, 0, 0, 0]} />
-          <Bar dataKey="high" name="High" stackId="a" fill={COLORS.high} />
-          <Bar dataKey="medium" name="Medium" stackId="a" fill={COLORS.medium} />
-          <Bar dataKey="low" name="Low" stackId="a" fill={COLORS.low} radius={[3, 3, 0, 0]} />
+          <Bar dataKey="critical" name={t('severityTrend.critical')} stackId="a" fill={COLORS.critical} radius={[0, 0, 0, 0]} />
+          <Bar dataKey="high" name={t('severityTrend.high')} stackId="a" fill={COLORS.high} />
+          <Bar dataKey="medium" name={t('severityTrend.medium')} stackId="a" fill={COLORS.medium} />
+          <Bar dataKey="low" name={t('severityTrend.low')} stackId="a" fill={COLORS.low} radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

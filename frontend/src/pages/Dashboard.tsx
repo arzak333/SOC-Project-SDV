@@ -13,6 +13,7 @@ import SeverityTrendChart from '../components/SeverityTrendChart'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import TopSourceIPs from '../components/TopSourceIPs'
 import { ToastContainer, toast } from '../components/Toast'
+import { useLanguage } from '../context/LanguageContext'
 import clsx from 'clsx'
 
 interface DashboardProps {
@@ -26,10 +27,12 @@ const SOURCE_COLORS: Record<string, string> = {
   firewall: '#ef4444',    // red
   endpoint: '#3b82f6',    // blue
   application: '#f59e0b', // amber (GLPI)
+  ids: '#8b5cf6',         // purple (Suricata)
 }
 
 export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const navigate = useNavigate()
+  const { t, locale } = useLanguage()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [trends, setTrends] = useState<{
     hourly: Array<{ hour: string; count: number }>
@@ -103,7 +106,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
     setSelectedSource(source)
     setSelectedSourceLabel(sourceName)
     if (source) {
-      toast.info(`Filtering by ${sourceName}`)
+      toast.info(`${t('common.filteringBy')} ${sourceName}`)
     }
   }
 
@@ -117,15 +120,15 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const toggleLiveMode = () => {
     setIsLiveMode(!isLiveMode)
     if (!isLiveMode) {
-      toast.success('Live mode enabled - auto-refreshing every 10 seconds')
+      toast.success(t('common.liveEnabled'))
     } else {
-      toast.info('Live mode disabled')
+      toast.info(t('common.liveDisabled'))
     }
   }
 
   // Handle chart point click
   const handleChartPointClick = (time: string, value: number) => {
-    toast.info(`Showing ${value} events at ${time}`)
+    toast.info(`${t('common.showingEvents')} ${value} ${t('eventVolume.events')} ${t('common.eventsAt')} ${time}`)
     navigate(`/events?time=${time}`)
   }
 
@@ -153,23 +156,36 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
     }))
     : []
 
-  // Transform recent alerts to table format with sourceKey
-  const recentAlerts = [...realtimeEvents, ...criticalAlerts]
+  // Transform recent alerts to table format with sourceKey + grouping
+  const rawAlerts = [...realtimeEvents, ...criticalAlerts]
     .filter((e) => e.severity === 'critical' || e.severity === 'high')
-    .slice(0, 10)
     .map((e) => ({
       id: e.id,
       severity: e.severity,
       alertName: e.description,
       source: e.site_id || formatSourceName(e.source),
       sourceKey: e.source,
-      time: new Date(e.timestamp).toLocaleTimeString('fr-FR', {
+      time: new Date(e.timestamp).toLocaleTimeString(locale(), {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
       }),
       assignee: e.assigned_to,
+      count: 1,
     }))
+
+  // Group by alertName + source to reduce alert fatigue
+  const groupedMap = new Map<string, typeof rawAlerts[0]>()
+  for (const alert of rawAlerts) {
+    const key = `${alert.alertName}::${alert.sourceKey || alert.source}`
+    const existing = groupedMap.get(key)
+    if (existing) {
+      existing.count += 1
+    } else {
+      groupedMap.set(key, { ...alert })
+    }
+  }
+  const recentAlerts = Array.from(groupedMap.values()).slice(0, 10)
 
   // Trend indicators: % change vs previous 24h
   const eventsTrend = stats?.events_prev_24h
@@ -184,9 +200,9 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Security Overview</h1>
+          <h1 className="text-2xl font-bold text-slate-100">{t('dashboard.securityOverview')}</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Real-time status of the AudioPro Network
+            {t('dashboard.realtimeStatus')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -203,12 +219,12 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
             {isLiveMode ? (
               <>
                 <Radio className="w-4 h-4 live-glow" />
-                <span>LIVE</span>
+                <span>{t('dashboard.live')}</span>
               </>
             ) : (
               <>
                 <Pause className="w-4 h-4" />
-                <span>Paused</span>
+                <span>{t('dashboard.paused')}</span>
               </>
             )}
           </button>
@@ -219,32 +235,32 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <StatCard
           icon={<Activity className="w-6 h-6" />}
-          label="Security Events"
+          label={t('dashboard.securityEvents')}
           value={stats?.total_events ?? 0}
-          trend={eventsTrend !== null ? { value: eventsTrend, isPositive: eventsTrend >= 0 } : undefined}
+          trend={eventsTrend !== null ? { value: Math.abs(eventsTrend), isPositive: eventsTrend <= 0, severity: Math.abs(eventsTrend) > 100 ? 'critical' : Math.abs(eventsTrend) > 50 ? 'warning' : 'normal' } : undefined}
           linkTo="/events"
         />
         <StatCard
           icon={<AlertTriangle className="w-6 h-6" />}
-          label="Alerts Triggered"
+          label={t('dashboard.alertsTriggered')}
           value={stats?.total_rule_triggers ?? 0}
           linkTo="/alerts"
         />
         <StatCard
           icon={<ShieldAlert className="w-6 h-6" />}
-          label="Incidents Ouverts"
+          label={t('dashboard.openIncidents')}
           value={stats?.open_incidents ?? 0}
           linkTo="/incidents"
         />
 <StatCard
           icon={<Monitor className="w-6 h-6" />}
-          label="Endpoints"
+          label={t('dashboard.endpoints')}
           value={stats?.total_sites ?? 0}
           linkTo="/sites"
         />
         <StatCard
           icon={<Users className="w-6 h-6" />}
-          label="Sources"
+          label={t('dashboard.sources')}
           value={stats?.by_source ? Object.keys(stats.by_source).length : 0}
         />
       </div>
@@ -316,6 +332,7 @@ function formatSourceName(source: string): string {
     firewall: 'Firewall',
     endpoint: 'Endpoints',
     application: 'GLPI',
+    ids: 'IDS / Suricata',
   }
   return names[source] || source.charAt(0).toUpperCase() + source.slice(1)
 }

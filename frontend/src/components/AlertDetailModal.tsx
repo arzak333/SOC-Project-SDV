@@ -17,9 +17,10 @@ import clsx from 'clsx'
 import Modal from './Modal'
 import LoadingSpinner from './LoadingSpinner'
 import { toast } from './Toast'
-import { SecurityEvent, Severity, EventStatus, AlertComment, Analyst, TimelineEvent } from '../types'
-import { fetchEvent, updateEventStatus, fetchEventComments, addEventComment, fetchAnalysts } from '../api'
+import { SecurityEvent, Severity, EventStatus, AlertComment, Analyst, TimelineEvent, Playbook } from '../types'
+import { fetchEvent, updateEventStatus, fetchEventComments, addEventComment, fetchAnalysts, fetchPlaybooks, executePlaybook } from '../api'
 import { useRole } from '../context/RoleContext'
+import { useLanguage } from '../context/LanguageContext'
 
 interface AlertDetailModalProps {
   eventId: string | null
@@ -30,11 +31,11 @@ interface AlertDetailModalProps {
 
 type TabId = 'overview' | 'timeline' | 'rawdata' | 'actions'
 
-const tabs: Array<{ id: TabId; label: string; icon: typeof Activity }> = [
-  { id: 'overview', label: 'Overview', icon: Activity },
-  { id: 'timeline', label: 'Timeline', icon: Clock },
-  { id: 'rawdata', label: 'Raw Data', icon: FileText },
-  { id: 'actions', label: 'Actions', icon: CheckCircle },
+const tabs: Array<{ id: TabId; labelKey: string; icon: typeof Activity }> = [
+  { id: 'overview', labelKey: 'modal.overview', icon: Activity },
+  { id: 'timeline', labelKey: 'modal.timeline', icon: Clock },
+  { id: 'rawdata', labelKey: 'modal.rawData', icon: FileText },
+  { id: 'actions', labelKey: 'modal.actions', icon: CheckCircle },
 ]
 
 const severityStyles: Record<Severity, string> = {
@@ -83,6 +84,7 @@ export default function AlertDetailModal({
   onUpdate,
 }: AlertDetailModalProps) {
   const { canAssign } = useRole()
+  const { t, locale } = useLanguage()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [event, setEvent] = useState<SecurityEvent | null>(null)
   const [loading, setLoading] = useState(true)
@@ -92,10 +94,14 @@ export default function AlertDetailModal({
   const [analysts, setAnalysts] = useState<Analyst[]>([])
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
   const [actionStates, setActionStates] = useState<Record<string, 'idle' | 'done'>>({})
+  const [showPlaybookPicker, setShowPlaybookPicker] = useState(false)
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([])
+  const [loadingPlaybooks, setLoadingPlaybooks] = useState(false)
 
   useEffect(() => {
     if (isOpen && eventId) {
       setActionStates({})
+      setShowPlaybookPicker(false)
       setActiveTab('overview')
       loadEventData()
     }
@@ -128,7 +134,7 @@ export default function AlertDetailModal({
       setTimeline(buildTimelineFromData(eventData, loadedComments))
     } catch (error) {
       console.error('Failed to load event:', error)
-      toast.error('Failed to load alert details')
+      toast.error(t('common.loading'))
     } finally {
       setLoading(false)
     }
@@ -227,7 +233,7 @@ export default function AlertDetailModal({
   if (!isOpen) return null
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl" title="Alert Details">
+    <Modal isOpen={isOpen} onClose={onClose} size="xl" title={t('alerts.viewDetails')}>
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <LoadingSpinner size="lg" />
@@ -261,7 +267,7 @@ export default function AlertDetailModal({
                 <div className="flex items-center gap-4 mt-2 text-sm text-slate-400">
                   <span className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    {new Date(event.timestamp).toLocaleString('fr-FR')}
+                    {new Date(event.timestamp).toLocaleString(locale())}
                   </span>
                   <span className="flex items-center gap-1">
                     <Server className="w-4 h-4" />
@@ -294,7 +300,7 @@ export default function AlertDetailModal({
                   )}
                 >
                   <Icon className="w-4 h-4" />
-                  {tab.label}
+                  {t(tab.labelKey)}
                 </button>
               )
             })}
@@ -307,29 +313,29 @@ export default function AlertDetailModal({
                 {/* Affected assets */}
                 <div>
                   <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">
-                    Affected Assets
+                    {t('modal.affectedAssets')}
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-slate-700/30 rounded-lg">
-                      <p className="text-xs text-slate-500 mb-1">Source IP</p>
+                      <p className="text-xs text-slate-500 mb-1">{t('modal.sourceIP')}</p>
                       <p className="font-mono text-slate-200">
                         {(event.metadata as Record<string, unknown>)?.source_ip as string || 'N/A'}
                       </p>
                     </div>
                     <div className="p-4 bg-slate-700/30 rounded-lg">
-                      <p className="text-xs text-slate-500 mb-1">Hostname</p>
+                      <p className="text-xs text-slate-500 mb-1">{t('modal.hostname')}</p>
                       <p className="font-mono text-slate-200">
                         {(event.metadata as Record<string, unknown>)?.hostname as string || 'N/A'}
                       </p>
                     </div>
                     <div className="p-4 bg-slate-700/30 rounded-lg">
-                      <p className="text-xs text-slate-500 mb-1">User</p>
+                      <p className="text-xs text-slate-500 mb-1">{t('modal.user')}</p>
                       <p className="text-slate-200">
                         {(event.metadata as Record<string, unknown>)?.user as string || 'N/A'}
                       </p>
                     </div>
                     <div className="p-4 bg-slate-700/30 rounded-lg">
-                      <p className="text-xs text-slate-500 mb-1">Event Type</p>
+                      <p className="text-xs text-slate-500 mb-1">{t('modal.eventType')}</p>
                       <p className="text-slate-200">{event.event_type}</p>
                     </div>
                   </div>
@@ -338,13 +344,13 @@ export default function AlertDetailModal({
                 {/* Assignment */}
                 <div>
                   <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">
-                    Assignment
+                    {t('modal.assignment')}
                   </h4>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-slate-500" />
                       <span className="text-slate-300">
-                        {event.assigned_to || 'Unassigned'}
+                        {event.assigned_to || t('modal.unassigned')}
                       </span>
                     </div>
                     {canAssign && (
@@ -354,7 +360,7 @@ export default function AlertDetailModal({
                         onChange={(e) => handleAssign(e.target.value)}
                         disabled={saving}
                       >
-                        <option value="">Assign to...</option>
+                        <option value="">{t('modal.assignTo')}</option>
                         {analysts.map((analyst) => (
                           <option key={analyst.id} value={analyst.id}>
                             {analyst.name} ({analyst.role})
@@ -369,11 +375,11 @@ export default function AlertDetailModal({
                 <div>
                   <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">
                     <MessageSquare className="w-4 h-4 inline mr-2" />
-                    Notes & Comments
+                    {t('modal.notesComments')}
                   </h4>
                   <div className="space-y-3 mb-4">
                     {comments.length === 0 ? (
-                      <p className="text-sm text-slate-500 italic">No comments yet</p>
+                      <p className="text-sm text-slate-500 italic">{t('modal.noComments')}</p>
                     ) : (
                       comments.map((comment) => (
                         <div key={comment.id} className="p-3 bg-slate-700/30 rounded-lg">
@@ -382,7 +388,7 @@ export default function AlertDetailModal({
                               {comment.author}
                             </span>
                             <span className="text-xs text-slate-500">
-                              {new Date(comment.created_at).toLocaleString('fr-FR')}
+                              {new Date(comment.created_at).toLocaleString(locale())}
                             </span>
                           </div>
                           <p className="text-sm text-slate-400">{comment.content}</p>
@@ -393,7 +399,7 @@ export default function AlertDetailModal({
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Add a comment..."
+                      placeholder={t('modal.addComment')}
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
@@ -427,7 +433,7 @@ export default function AlertDetailModal({
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-medium text-slate-200">{item.action}</span>
                           <span className="text-xs text-slate-500">
-                            {new Date(item.timestamp).toLocaleString('fr-FR')}
+                            {new Date(item.timestamp).toLocaleString(locale())}
                           </span>
                         </div>
                         <p className="text-sm text-slate-400">By: {item.actor}</p>
@@ -445,15 +451,15 @@ export default function AlertDetailModal({
               <div className="space-y-4">
                 <div>
                   <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-2">
-                    Raw Log
+                    {t('modal.rawLog')}
                   </h4>
                   <pre className="p-4 bg-slate-900 rounded-lg text-sm text-green-400 font-mono overflow-x-auto whitespace-pre-wrap">
-                    {event.raw_log || 'No raw log data available'}
+                    {event.raw_log || t('modal.noRawLog')}
                   </pre>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-2">
-                    Metadata (JSON)
+                    {t('modal.metadataJson')}
                   </h4>
                   <pre className="p-4 bg-slate-900 rounded-lg text-sm text-blue-400 font-mono overflow-x-auto">
                     {JSON.stringify(event.metadata, null, 2)}
@@ -466,7 +472,7 @@ export default function AlertDetailModal({
               <div className="space-y-6">
                 <div>
                   <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
-                    Change Status
+                    {t('modal.changeStatus')}
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -480,7 +486,7 @@ export default function AlertDetailModal({
                       )}
                     >
                       <AlertTriangle className="w-5 h-5" />
-                      Investigating
+                      {t('modal.investigating')}
                     </button>
                     <button
                       onClick={() => handleStatusChange('resolved')}
@@ -493,7 +499,7 @@ export default function AlertDetailModal({
                       )}
                     >
                       <CheckCircle className="w-5 h-5" />
-                      Mark Resolved
+                      {t('modal.markResolved')}
                     </button>
                     <button
                       onClick={() => handleStatusChange('false_positive')}
@@ -506,28 +512,27 @@ export default function AlertDetailModal({
                       )}
                     >
                       <FileText className="w-5 h-5" />
-                      False Positive
+                      {t('modal.falsePositive')}
                     </button>
                     <button
-                      onClick={() => toast.info('Escalation feature coming soon')}
+                      onClick={() => toast.info(t('modal.escalateHint'))}
                       className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg font-medium transition-all"
                     >
                       <ArrowUpCircle className="w-5 h-5" />
-                      Escalate
+                      {t('modal.escalate')}
                     </button>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
-                    Quick Actions
+                    {t('modal.quickActions')}
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {[
-                      { key: 'ticket', label: 'Create Ticket', doneLabel: 'Ticket Created' },
-                      { key: 'block_ip', label: 'Block Source IP', doneLabel: 'IP Blocked' },
-                      { key: 'isolate', label: 'Isolate Endpoint', doneLabel: 'Endpoint Isolated' },
-                      { key: 'playbook', label: 'Run Playbook', doneLabel: 'Playbook Launched' },
+                      { key: 'ticket', labelKey: 'modal.createTicket', doneLabelKey: 'modal.ticketCreated' },
+                      { key: 'block_ip', labelKey: 'modal.blockSourceIP', doneLabelKey: 'modal.ipBlocked' },
+                      { key: 'isolate', labelKey: 'modal.isolateEndpoint', doneLabelKey: 'modal.endpointIsolated' },
                     ].map((action) => {
                       const isDone = actionStates[action.key] === 'done'
                       return (
@@ -535,20 +540,18 @@ export default function AlertDetailModal({
                           key={action.key}
                           onClick={() => {
                             if (isDone) {
-                              // Toggle back to idle
                               setActionStates((prev) => ({ ...prev, [action.key]: 'idle' }))
-                              toast.info(`${action.label} undone`)
-                              setTimeline((prev) => prev.filter((t) => t.action !== action.doneLabel))
+                              toast.info(`${t(action.labelKey)} undone`)
+                              setTimeline((prev) => prev.filter((t) => t.action !== t(action.doneLabelKey)))
                             } else {
-                              // Instant done
                               setActionStates((prev) => ({ ...prev, [action.key]: 'done' }))
-                              toast.success(action.doneLabel)
+                              toast.success(t(action.doneLabelKey))
                               setTimeline((prev) => [
                                 ...prev,
                                 {
                                   id: Date.now().toString(),
                                   timestamp: new Date().toISOString(),
-                                  action: action.doneLabel,
+                                  action: t(action.doneLabelKey),
                                   actor: 'Current User',
                                 },
                               ])
@@ -562,10 +565,114 @@ export default function AlertDetailModal({
                           )}
                         >
                           {isDone && <Check className="w-4 h-4" />}
-                          {isDone ? action.doneLabel : action.label}
+                          {isDone ? t(action.doneLabelKey) : t(action.labelKey)}
                         </button>
                       )
                     })}
+
+                    {/* Run Playbook — real picker */}
+                    <div className="relative">
+                      <button
+                        onClick={async () => {
+                          if (actionStates.playbook === 'done') {
+                            setActionStates((prev) => ({ ...prev, playbook: 'idle' }))
+                            setShowPlaybookPicker(false)
+                            toast.info(`${t('modal.runPlaybook')} ${t('modal.undone')}`)
+                            setTimeline((prev) => prev.filter((t) => !t.action.startsWith('Playbook "')))
+                            return
+                          }
+                          if (showPlaybookPicker) {
+                            setShowPlaybookPicker(false)
+                            return
+                          }
+                          setLoadingPlaybooks(true)
+                          setShowPlaybookPicker(true)
+                          try {
+                            const data = await fetchPlaybooks({ status: 'active' })
+                            setPlaybooks(data.playbooks || [])
+                          } catch {
+                            toast.error('Failed to load playbooks')
+                            setShowPlaybookPicker(false)
+                          } finally {
+                            setLoadingPlaybooks(false)
+                          }
+                        }}
+                        className={clsx(
+                          'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                          actionStates.playbook === 'done'
+                            ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        )}
+                      >
+                        {actionStates.playbook === 'done' && <Check className="w-4 h-4" />}
+                        {actionStates.playbook === 'done' ? t('modal.playbookLaunched') : t('modal.runPlaybook')}
+                      </button>
+
+                      {showPlaybookPicker && (
+                        <div className="absolute bottom-full mb-2 left-0 w-72 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20">
+                          <div className="p-3 border-b border-slate-700">
+                            <h4 className="text-sm font-medium text-slate-200">{t('modal.selectPlaybook')}</h4>
+                          </div>
+                          {loadingPlaybooks ? (
+                            <div className="p-4 text-center text-slate-500 text-sm">{t('common.loading')}</div>
+                          ) : playbooks.length === 0 ? (
+                            <div className="p-4 text-center text-slate-500 text-sm">{t('modal.noPlaybooks')}</div>
+                          ) : (
+                            <div className="max-h-48 overflow-y-auto py-1">
+                              {playbooks.map((pb) => {
+                                const isRecommended = event && (
+                                  (event.event_type?.includes('brute') && pb.category === 'incident') ||
+                                  (event.event_type?.includes('malware') && pb.category === 'remediation') ||
+                                  (event.event_type?.includes('scan') && pb.category === 'incident') ||
+                                  (event.severity === 'critical' && pb.category === 'incident')
+                                )
+                                return (
+                                  <button
+                                    key={pb.id}
+                                    onClick={async () => {
+                                      if (!event) return
+                                      try {
+                                        await executePlaybook(pb.id, {
+                                          eventId: event.id,
+                                          startedBy: 'Current User',
+                                        })
+                                        toast.success(`Playbook "${pb.name}" launched`)
+                                        setShowPlaybookPicker(false)
+                                        setActionStates((prev) => ({ ...prev, playbook: 'done' }))
+                                        setTimeline((prev) => [
+                                          ...prev,
+                                          {
+                                            id: Date.now().toString(),
+                                            timestamp: new Date().toISOString(),
+                                            action: `Playbook "${pb.name}" launched`,
+                                            actor: 'Current User',
+                                          },
+                                        ])
+                                      } catch {
+                                        toast.error(`Failed to execute "${pb.name}"`)
+                                      }
+                                    }}
+                                    className="w-full px-3 py-2 text-left hover:bg-slate-700 transition-colors flex items-center justify-between"
+                                  >
+                                    <div className="min-w-0">
+                                      <span className="text-sm text-slate-200 block truncate">{pb.name}</span>
+                                      {pb.description && (
+                                        <span className="block text-xs text-slate-500 truncate">{pb.description.slice(0, 60)}</span>
+                                      )}
+                                    </div>
+                                    {isRecommended && (
+                                      <span className="ml-2 shrink-0 px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">
+                                        {t('modal.recommended')}
+                                      </span>
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -578,12 +685,12 @@ export default function AlertDetailModal({
               onClick={onClose}
               className="px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors"
             >
-              Close
+              {t('modal.close')}
             </button>
           </div>
         </div>
       ) : (
-        <div className="p-6 text-center text-slate-400">Event not found</div>
+        <div className="p-6 text-center text-slate-400">{t('modal.eventNotFound')}</div>
       )}
     </Modal>
   )

@@ -299,12 +299,75 @@ Separate Docker Compose stack in `infrastructure/` simulating the client network
 
 ---
 
+## SOC Analyst UX Improvements (v1.5)
+
+### Language Consistency
+- All UI strings standardized to **English** (previously mixed French/English)
+- French day names, chart titles, and labels converted to English
+- Date locale formatting (`fr-FR`) kept for timestamps
+
+### Event Trend Color Fix
+- **Security-context aware** trend indicators: more events = bad (red/amber), fewer events = good (green)
+- Amber threshold for >50% deviation, red for >100% regardless of direction
+- Previously showed green for increases (misleading in security context)
+
+### Alert Grouping (Reduce Alert Fatigue)
+- Duplicate alerts grouped by `alertName + source` in the Recent Alerts table
+- Shows count badge (`23x`) next to grouped alert names
+- Reduces 1,000 brute-force lines to a single grouped entry
+
+### False Positive Quick Action
+- `Ban` icon button in Recent Alerts table Actions column
+- One-click false positive marking directly from dashboard (no need to open modal)
+
+### IP Quick Actions (OSINT)
+- Hover over any IP in Top Source IPs widget to reveal action menu
+- **Whois Lookup** — opens who.is in new tab
+- **VirusTotal** — opens VirusTotal IP page in new tab
+- **Block IP** — simulated block action with toast confirmation
+
+### Playbook Integration on Alerts
+- "Run Playbook" in Alert Detail Modal now shows **real playbook picker**
+- Fetches active playbooks from backend and displays selectable list
+- **Recommended** badge on playbooks matching the event type/severity
+- Executes playbook via backend API with event context (eventId, startedBy)
+
+---
+
+## Internationalization / i18n (v1.6)
+
+### EN/FR Language Toggle
+- One-click language toggle button in the **top header bar** (🇬🇧 EN / 🇫🇷 FR)
+- Instant language switch — no page reload required
+- Language persisted to `localStorage` (survives refresh)
+- Default language: English
+
+### Implementation
+- **Lightweight i18n system** — no external library, uses React Context + translations dictionary
+- `LanguageContext` provider with `t(key)` translation function
+- `locale()` helper for date/number formatting (`en-US` / `fr-FR`)
+- ~150 translation keys per language covering all dashboard components
+
+### Translated Components
+All dashboard-facing components use `t()` for user-visible strings:
+- Dashboard (header, stat cards, live mode toggle)
+- Sidebar navigation (Layout)
+- TopBar (system status, user menu, notifications)
+- Event Volume Chart, Severity Trend Chart, Activity Heatmap
+- Recent Alerts Table (headers, empty states, action labels)
+- Alert Detail Modal (tabs, fields, status buttons, quick actions, playbook picker)
+- Endpoint Status Card (status labels, detail modal fields)
+- Top Source IPs (title, action menu, OSINT links)
+- StatCard (trend label)
+
+---
+
 ## Planned Features (Roadmap)
 
-### v1.4 (Planned)
+### v1.6 (Planned)
 - [ ] Email notifications (SMTP integration)
 - [ ] Webhook notifications
-- [ ] Advanced analytics dashboard
+- [ ] Geolocation map for source IPs
 
 ### v2.0 (Planned)
 - [ ] Machine learning anomaly detection
@@ -322,3 +385,5 @@ Separate Docker Compose stack in `infrastructure/` simulating the client network
 | v1.2 | 2026-02 | GLPI integration, Infrastructure lab (Wazuh + endpoints + firewall), Event Correlation Engine, Incidents module |
 | v1.3 | 2026-02 | Automated backend testing (pytest), Automated playbook execution runner |
 | v1.4 | 2026-02 | Dashboard analytics: trend indicators, severity trend chart, activity heatmap, top source IPs, quick actions, live feed animation |
+| v1.5 | 2026-02 | SOC analyst UX: language consistency, trend color fix, alert grouping, FP quick action, IP OSINT actions, playbook integration |
+| v1.6 | 2026-02 | Internationalization: EN/FR language toggle with full translation coverage |

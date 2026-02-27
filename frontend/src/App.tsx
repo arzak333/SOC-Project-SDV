@@ -12,6 +12,7 @@ import { SocketProvider } from './hooks/useSocket'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { RoleProvider } from './context/RoleContext'
+import { LanguageProvider } from './context/LanguageContext'
 import { SecurityEvent } from './types'
 
 // Protected Route wrapper
@@ -69,11 +70,13 @@ function AppRoutes() {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <RoleProvider>
-          <AppRoutes />
-        </RoleProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <RoleProvider>
+            <AppRoutes />
+          </RoleProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   )
 }
