@@ -1,5 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import clsx from 'clsx'
+import { useLanguage } from '../context/LanguageContext'
 
 type TimeRange = '5m' | '15m' | '30m' | '1h' | '6h' | '24h' | '7d' | '30d'
 
@@ -29,6 +30,7 @@ export default function EventVolumeChart({
     onDataPointClick,
     loading = false,
 }: EventVolumeChartProps) {
+    const { t } = useLanguage()
     const handleClick = (data: any) => {
         if (data && data.activePayload && data.activePayload[0] && onDataPointClick) {
             const { time, value } = data.activePayload[0].payload
@@ -47,7 +49,7 @@ export default function EventVolumeChart({
 
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-100">
-                    Event Volume (Ingestion)
+                    {t('eventVolume.title')}
                 </h3>
 
                 {/* Time range selector */}
@@ -101,8 +103,8 @@ export default function EventVolumeChart({
                             borderRadius: '8px',
                             color: '#e2e8f0',
                         }}
-                        formatter={(value: number) => [`${value.toLocaleString()} events`, 'Volume']}
-                        labelFormatter={(label) => `Time: ${label}`}
+                        formatter={(value: number) => [`${value.toLocaleString()} ${t('eventVolume.events')}`, t('eventVolume.volume')]}
+                        labelFormatter={(label) => `${t('eventVolume.time')}: ${label}`}
                     />
                     <Area
                         type="monotone"
@@ -117,7 +119,7 @@ export default function EventVolumeChart({
 
             {onDataPointClick && (
                 <p className="text-xs text-slate-500 text-center mt-2">
-                    Click on the chart to view events for that time period
+                    {t('eventVolume.clickHint')}
                 </p>
             )}
         </div>

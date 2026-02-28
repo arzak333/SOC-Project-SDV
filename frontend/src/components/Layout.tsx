@@ -11,6 +11,7 @@ import {
   WifiOff,
 } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
+import { useLanguage } from '../context/LanguageContext'
 import TopBar from './TopBar'
 import clsx from 'clsx'
 
@@ -19,17 +20,18 @@ interface LayoutProps {
 }
 
 const navItems = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/incidents', icon: Shield, label: 'Incidents' },
-  { path: '/alerts', icon: Bell, label: 'Alerts' },
-  { path: '/events', icon: FileText, label: 'Events Log' },
-  { path: '/playbooks', icon: BookOpen, label: 'Playbooks' },
-  { path: '/sites', icon: Server, label: 'Assets & Infrastructure' },
+  { path: '/', icon: LayoutDashboard, labelKey: 'sidebar.dashboard' },
+  { path: '/incidents', icon: Shield, labelKey: 'sidebar.incidents' },
+  { path: '/alerts', icon: Bell, labelKey: 'sidebar.alerts' },
+  { path: '/events', icon: FileText, labelKey: 'sidebar.eventsLog' },
+  { path: '/playbooks', icon: BookOpen, labelKey: 'sidebar.playbooks' },
+  { path: '/sites', icon: Server, labelKey: 'sidebar.assets' },
 ]
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const { connected, alerts } = useSocket()
+  const { t } = useLanguage()
 
   return (
     <div className="min-h-screen flex transition-colors duration-300" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
@@ -73,7 +75,7 @@ export default function Layout({ children }: LayoutProps) {
                 )}
               >
                 <Icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
+                <span className="font-medium">{t(item.labelKey)}</span>
                 {item.path === '/alerts' && alerts.length > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
                     {alerts.length}
@@ -95,11 +97,11 @@ export default function Layout({ children }: LayoutProps) {
             ) : (
               <>
                 <WifiOff className="w-4 h-4 text-red-500" />
-                <span className="text-red-400">Disconnected</span>
+                <span className="text-red-400">{t('sidebar.disconnected')}</span>
               </>
             )}
           </div>
-          <p className="text-xs text-slate-600 mt-1">Secure Connection</p>
+          <p className="text-xs text-slate-600 mt-1">{t('sidebar.secureConnection')}</p>
         </div>
       </aside>
 

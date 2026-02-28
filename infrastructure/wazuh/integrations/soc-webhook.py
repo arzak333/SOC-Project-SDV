@@ -35,12 +35,16 @@ def map_severity(level):
         return 'low'
 
 
-def map_source(groups):
-    """Map Wazuh rule groups to SOC event source (firewall or endpoint)."""
+def map_source(groups, agent_name=''):
+    """Map Wazuh rule groups to SOC event source."""
     groups_str = ','.join(groups) if isinstance(groups, list) else str(groups)
 
-    if any(g in groups_str for g in ['firewall', 'iptables', 'pf']):
+    if any(g in groups_str for g in ['ids', 'suricata', 'snort']):
+        return 'ids'
+    elif any(g in groups_str for g in ['firewall', 'iptables', 'pf']):
         return 'firewall'
+    elif 'glpi' in agent_name.lower() or any(g in groups_str for g in ['web', 'apache', 'nginx', 'accesslog']):
+        return 'application'
     else:
         return 'endpoint'
 
@@ -76,9 +80,10 @@ def transform_alert(alert):
     data = alert.get('data', {})
 
     groups = rule.get('groups', [])
+    agent_name = agent.get('name', '')
 
     soc_event = {
-        'source': map_source(groups),
+        'source': map_source(groups, agent_name),
         'event_type': map_event_type(rule.get('id', ''), groups),
         'severity': map_severity(rule.get('level', 3)),
         'description': rule.get('description', 'Wazuh alert'),

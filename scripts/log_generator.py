@@ -15,7 +15,7 @@ from typing import Optional
 API_URL = "http://localhost:5000/api/ingest"
 
 # Sites — matches real infrastructure instances
-SITES = ["endpoint-pc-01", "endpoint-pc-02", "firewall-gw"]
+SITES = ["endpoint-pc-01", "endpoint-pc-02", "firewall-gw", "glpi-crm", "suricata-ids"]
 
 # Event templates by source — only real infrastructure sources
 EVENT_TEMPLATES = {
@@ -36,6 +36,23 @@ EVENT_TEMPLATES = {
         {"event_type": "account_lockout", "severity": "high", "description": "User account locked out after failed attempts"},
         {"event_type": "file_integrity", "severity": "medium", "description": "File integrity change detected on endpoint"},
     ],
+    "application": [
+        {"event_type": "auth_failure", "severity": "medium", "description": "Failed login attempt on GLPI console"},
+        {"event_type": "config_change", "severity": "high", "description": "GLPI configuration modified"},
+        {"event_type": "asset_change", "severity": "low", "description": "IT asset record created or updated in GLPI"},
+        {"event_type": "user_management", "severity": "medium", "description": "GLPI user account created or modified"},
+        {"event_type": "api_access", "severity": "low", "description": "GLPI REST API access from external IP"},
+        {"event_type": "data_export", "severity": "high", "description": "Bulk data export performed from GLPI"},
+    ],
+    "ids": [
+        {"event_type": "intrusion_attempt", "severity": "critical", "description": "Suricata: Possible exploit attempt detected (ET EXPLOIT)"},
+        {"event_type": "port_scan", "severity": "high", "description": "Suricata: Network scan detected (ET SCAN)"},
+        {"event_type": "malware_detected", "severity": "critical", "description": "Suricata: Malware traffic signature matched (ET MALWARE)"},
+        {"event_type": "policy_violation", "severity": "medium", "description": "Suricata: Policy violation detected (ET POLICY)"},
+        {"event_type": "intrusion_attempt", "severity": "high", "description": "Suricata: Suspicious inbound traffic to database port"},
+        {"event_type": "security_alert", "severity": "medium", "description": "Suricata: Potentially bad traffic pattern detected"},
+        {"event_type": "intrusion_attempt", "severity": "critical", "description": "Suricata: Known exploit signature matched (CVE)"},
+    ],
 }
 
 # IP addresses for realism
@@ -51,14 +68,31 @@ def generate_raw_log(source: str, event_type: str) -> str:
     templates = {
         "firewall": f"{timestamp} FW-001 BLOCK src={random.choice(EXTERNAL_IPS)} dst={random.choice(INTERNAL_IPS)} proto=TCP dport={random.choice([22, 23, 445, 3389, 8080])}",
         "endpoint": f"{timestamp} ENDPOINT-{random.randint(100, 999)} Event={event_type} User={random.choice(USERS)} Host={random.choice(SITES)} Status=Detected",
+        "application": f"{timestamp} GLPI [access] {event_type} user={random.choice(USERS)} ip={random.choice(EXTERNAL_IPS)} action={event_type}",
+        "ids": f'{timestamp} suricata[{random.randint(1000,9999)}]: [{random.randint(1,3)}:{random.randint(2000000,2099999)}:{random.randint(1,10)}] ET {random.choice(["SCAN", "EXPLOIT", "MALWARE", "POLICY"])} {event_type} {{TCP}} {random.choice(EXTERNAL_IPS)}:{random.randint(1024,65535)} -> {random.choice(INTERNAL_IPS)}:{random.choice([22, 80, 443, 445, 3389, 8080])}',
     }
 
     return templates.get(source, f"{timestamp} {event_type}")
 
 
+SOURCE_WEIGHTS = {
+    # Realistic SOC distribution:
+    # Firewalls are the noisiest (perimeter, NAT, allow/deny for all traffic)
+    # Endpoints second (EDR agents on workstations/servers)
+    # IDS is filtered/alerting layer — less volume than raw firewall
+    # Application (GLPI) is low-frequency IT ops events
+    "firewall": 40,
+    "endpoint": 30,
+    "application": 10,
+    "ids": 20,
+}
+
+
 def generate_event() -> dict:
     """Generate a random security event."""
-    source = random.choice(list(EVENT_TEMPLATES.keys()))
+    sources = list(EVENT_TEMPLATES.keys())
+    weights = [SOURCE_WEIGHTS[s] for s in sources]
+    source = random.choices(sources, weights=weights, k=1)[0]
     template = random.choice(EVENT_TEMPLATES[source])
     site = random.choice(SITES)
 
@@ -145,7 +179,9 @@ def generate_attack_scenario():
     target_user = random.choice(USERS)
 
     scenario = [
-        # Phase 1: Reconnaissance
+        # Phase 1: Reconnaissance (IDS + Firewall detect scanning)
+        {"source": "ids", "event_type": "port_scan", "severity": "high",
+         "description": f"[{site}] Suricata: Nmap scan detected from {attacker_ip}"},
         {"source": "firewall", "event_type": "port_scan", "severity": "high",
          "description": f"[{site}] Port scan from {attacker_ip}"},
         {"source": "firewall", "event_type": "blocked_connection", "severity": "medium",
@@ -171,7 +207,9 @@ def generate_attack_scenario():
         {"source": "endpoint", "event_type": "file_integrity", "severity": "medium",
          "description": f"[{site}] Critical system file modified"},
 
-        # Phase 5: Firewall anomaly (exfiltration attempt)
+        # Phase 5: Exfiltration (IDS + Firewall detect C2 traffic)
+        {"source": "ids", "event_type": "malware_detected", "severity": "critical",
+         "description": f"[{site}] Suricata: Possible C2 beacon traffic detected from compromised host"},
         {"source": "firewall", "event_type": "intrusion_attempt", "severity": "critical",
          "description": f"[{site}] Unusual outbound data transfer detected from compromised host"},
     ]

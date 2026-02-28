@@ -50,7 +50,7 @@ This file tracks all features implemented in the AudioSOC project.
 - Batch ingestion (`POST /api/ingest/batch`)
 - Input validation and sanitization
 - Real-time WebSocket broadcast on ingestion
-- Support for 2 event sources matching real infrastructure: firewall, endpoint
+- Support for 3 event sources matching real infrastructure: firewall, endpoint, application (GLPI)
 
 ---
 
@@ -240,12 +240,134 @@ Separate Docker Compose stack in `infrastructure/` simulating the client network
 
 ---
 
+## Dashboard Analytics & UX (v1.3)
+
+### Trend Indicators on StatCards
+- **% change vs previous 24h** on Security Events and Critical Alerts cards
+- Green/red arrows with percentage (TrendingUp / TrendingDown icons)
+- Backend: `/dashboard/stats` now returns `events_prev_24h` and `critical_prev_24h`
+
+### Event Volume Chart Enhancements
+- Time range selector: `5m`, `15m`, `30m`, `1h`, `6h`, `24h`, `7d`, `30d`
+- Clickable data points → navigate to Events page filtered by time
+- Loading state during range changes
+
+### Severity Trend Chart (7d / 30d)
+- Stacked area chart showing daily breakdown by severity (critical, high, medium, low)
+- Only visible when time range is `7d` or `30d`
+- Backend: `/dashboard/trends` returns `daily` array with per-severity counts
+
+### Activity Heatmap
+- Weekly heatmap (7 days × 24 hours) showing event density
+- Color intensity based on event count per hour-slot
+- Backend: `GET /api/dashboard/heatmap` — aggregates events by day-of-week and hour
+
+### Top Source IPs Widget
+- Horizontal bar chart of top 10 source IPs (last 24h)
+- Color-coded bars: red (critical), orange (high), blue (normal)
+- Critical/high severity badges per IP
+- Backend: `GET /api/dashboard/top-ips` — JSONB query on `metadata.source_ip`
+
+### Alerts by Source (Donut Chart)
+- Interactive donut chart with source breakdown (Firewall, Endpoints, GLPI)
+- Click a slice to filter RecentAlertsTable by source
+- Filter badge shown on table when active
+
+### Recent Alerts Table Enhancements
+- **Quick Actions column**: Eye (view details) + UserCheck (assign to me) buttons
+- **Quick assignment**: one-click self-assign via `updateEventStatus`
+- **Assignee dropdown**: click to reassign (admin/supervisor only via RBAC)
+- **Live feed animation**: new entries flash blue highlight (`animate-new-entry`) and fade
+- **Source filter**: linked to donut chart selection
+
+### Alert Detail Modal — Quick Actions
+- **Toggleable action buttons**: Create Ticket, Block Source IP, Isolate Endpoint, Run Playbook
+- Instant visual feedback (green checkmark on click, re-clickable to undo)
+- Actions logged in modal's timeline tab
+
+### Endpoint Status Card Enhancements
+- **Degraded/offline sub-text**: shows reason under endpoint name
+  - Offline: `"{N} critical alert(s) detected"` (red)
+  - Degraded: `"{N} events, high severity alerts"` (yellow)
+- Click to open detail modal with health score, IP, location, event stats
+- Quick actions: View Logs, Restart Services, Investigate
+
+### Live Mode
+- Toggle button (LIVE / Paused) in dashboard header
+- Auto-refresh every 10 seconds when live
+- Green pulsing indicator on alerts table
+
+---
+
+## SOC Analyst UX Improvements (v1.5)
+
+### Language Consistency
+- All UI strings standardized to **English** (previously mixed French/English)
+- French day names, chart titles, and labels converted to English
+- Date locale formatting (`fr-FR`) kept for timestamps
+
+### Event Trend Color Fix
+- **Security-context aware** trend indicators: more events = bad (red/amber), fewer events = good (green)
+- Amber threshold for >50% deviation, red for >100% regardless of direction
+- Previously showed green for increases (misleading in security context)
+
+### Alert Grouping (Reduce Alert Fatigue)
+- Duplicate alerts grouped by `alertName + source` in the Recent Alerts table
+- Shows count badge (`23x`) next to grouped alert names
+- Reduces 1,000 brute-force lines to a single grouped entry
+
+### False Positive Quick Action
+- `Ban` icon button in Recent Alerts table Actions column
+- One-click false positive marking directly from dashboard (no need to open modal)
+
+### IP Quick Actions (OSINT)
+- Hover over any IP in Top Source IPs widget to reveal action menu
+- **Whois Lookup** — opens who.is in new tab
+- **VirusTotal** — opens VirusTotal IP page in new tab
+- **Block IP** — simulated block action with toast confirmation
+
+### Playbook Integration on Alerts
+- "Run Playbook" in Alert Detail Modal now shows **real playbook picker**
+- Fetches active playbooks from backend and displays selectable list
+- **Recommended** badge on playbooks matching the event type/severity
+- Executes playbook via backend API with event context (eventId, startedBy)
+
+---
+
+## Internationalization / i18n (v1.6)
+
+### EN/FR Language Toggle
+- One-click language toggle button in the **top header bar** (🇬🇧 EN / 🇫🇷 FR)
+- Instant language switch — no page reload required
+- Language persisted to `localStorage` (survives refresh)
+- Default language: English
+
+### Implementation
+- **Lightweight i18n system** — no external library, uses React Context + translations dictionary
+- `LanguageContext` provider with `t(key)` translation function
+- `locale()` helper for date/number formatting (`en-US` / `fr-FR`)
+- ~150 translation keys per language covering all dashboard components
+
+### Translated Components
+All dashboard-facing components use `t()` for user-visible strings:
+- Dashboard (header, stat cards, live mode toggle)
+- Sidebar navigation (Layout)
+- TopBar (system status, user menu, notifications)
+- Event Volume Chart, Severity Trend Chart, Activity Heatmap
+- Recent Alerts Table (headers, empty states, action labels)
+- Alert Detail Modal (tabs, fields, status buttons, quick actions, playbook picker)
+- Endpoint Status Card (status labels, detail modal fields)
+- Top Source IPs (title, action menu, OSINT links)
+- StatCard (trend label)
+
+---
+
 ## Planned Features (Roadmap)
 
-### v1.4 (Planned)
+### v1.6 (Planned)
 - [ ] Email notifications (SMTP integration)
 - [ ] Webhook notifications
-- [ ] Advanced analytics dashboard
+- [ ] Geolocation map for source IPs
 
 ### v2.0 (Planned)
 - [ ] Machine learning anomaly detection
@@ -262,3 +384,6 @@ Separate Docker Compose stack in `infrastructure/` simulating the client network
 | v1.1 | 2026-01 | Authentication, Themes, Export, Enhanced Playbooks, Rule templates, RBAC |
 | v1.2 | 2026-02 | GLPI integration, Infrastructure lab (Wazuh + endpoints + firewall), Event Correlation Engine, Incidents module |
 | v1.3 | 2026-02 | Automated backend testing (pytest), Automated playbook execution runner |
+| v1.4 | 2026-02 | Dashboard analytics: trend indicators, severity trend chart, activity heatmap, top source IPs, quick actions, live feed animation |
+| v1.5 | 2026-02 | SOC analyst UX: language consistency, trend color fix, alert grouping, FP quick action, IP OSINT actions, playbook integration |
+| v1.6 | 2026-02 | Internationalization: EN/FR language toggle with full translation coverage |

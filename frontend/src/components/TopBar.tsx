@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { useRole, JwtRole } from '../context/RoleContext'
+import { useLanguage } from '../context/LanguageContext'
 import { fetchEvents } from '../api'
 import { SecurityEvent } from '../types'
 
@@ -28,6 +29,7 @@ export default function TopBar({
     const { theme, toggleTheme } = useTheme()
     const { user, logout } = useAuth()
     const { effectiveRole, setEffectiveRole } = useRole()
+    const { lang, toggleLang, t } = useLanguage()
     const navigate = useNavigate()
     const [showUserMenu, setShowUserMenu] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
@@ -63,12 +65,12 @@ export default function TopBar({
                 <div className="flex items-center gap-2">
                     <span className={clsx('w-2 h-2 rounded-full', statusColors[systemStatus])} />
                     <span className="text-sm text-slate-300 uppercase tracking-wide">
-                        System {systemStatus}
+                        {t('topbar.system')} {systemStatus}
                     </span>
                 </div>
                 <span className="text-slate-500">|</span>
                 <span className="text-sm text-slate-400">
-                    Monitoring <span className="text-slate-200 font-medium">{monitoringCount} Centers</span>
+                    {t('topbar.monitoring')} <span className="text-slate-200 font-medium">{monitoringCount} {t('topbar.centers')}</span>
                 </span>
             </div>
 
@@ -77,7 +79,7 @@ export default function TopBar({
                 {/* Role Switcher — admin only */}
                 {user?.role === 'admin' && (
                     <div className="flex items-center gap-1 text-sm">
-                        <span className="text-slate-400 mr-2">VIEW AS</span>
+                        <span className="text-slate-400 mr-2">{t('topbar.viewAs')}</span>
                         {roles.map((role) => (
                             <button
                                 key={role.value}
@@ -95,6 +97,16 @@ export default function TopBar({
                     </div>
                 )}
 
+                {/* Language Toggle */}
+                <button
+                    onClick={toggleLang}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-slate-800 hover:bg-slate-700 border border-slate-700"
+                    title={lang === 'en' ? 'Passer en français' : 'Switch to English'}
+                >
+                    <span>{lang === 'en' ? '🇬🇧' : '🇫🇷'}</span>
+                    <span className="text-slate-300">{lang.toUpperCase()}</span>
+                </button>
+
                 {/* Theme Toggle - Glass Effect */}
                 <button
                     onClick={toggleTheme}
@@ -104,12 +116,12 @@ export default function TopBar({
                     {theme === 'dark' ? (
                         <>
                             <Sun className="w-4 h-4 text-yellow-400 group-hover:rotate-45 transition-transform duration-300" />
-                            <span className="text-xs text-slate-400 hidden sm:inline">Light</span>
+                            <span className="text-xs text-slate-400 hidden sm:inline">{t('topbar.light')}</span>
                         </>
                     ) : (
                         <>
                             <Moon className="w-4 h-4 text-blue-400 group-hover:-rotate-12 transition-transform duration-300" />
-                            <span className="text-xs text-slate-600 hidden sm:inline">Dark</span>
+                            <span className="text-xs text-slate-600 hidden sm:inline">{t('topbar.dark')}</span>
                         </>
                     )}
                 </button>
@@ -133,16 +145,16 @@ export default function TopBar({
                             <div className="fixed inset-0 z-10" onClick={() => setShowNotifications(false)} />
                             <div className="absolute right-0 top-full mt-2 w-80 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden">
                                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-                                    <span className="text-sm font-semibold text-slate-200">Recent Alerts</span>
+                                    <span className="text-sm font-semibold text-slate-200">{t('topbar.recentAlerts')}</span>
                                     <button
                                         onClick={() => { setShowNotifications(false); navigate('/events', { state: { severity: 'critical,high' } }) }}
                                         className="text-xs text-blue-400 hover:text-blue-300"
                                     >
-                                        View all
+                                        {t('topbar.viewAll')}
                                     </button>
                                 </div>
                                 {notifications.length === 0 ? (
-                                    <div className="px-4 py-6 text-center text-sm text-slate-500">No new alerts</div>
+                                    <div className="px-4 py-6 text-center text-sm text-slate-500">{t('topbar.noNewAlerts')}</div>
                                 ) : (
                                     <div className="max-h-72 overflow-y-auto">
                                         {notifications.map((event) => (
@@ -199,7 +211,7 @@ export default function TopBar({
                                         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-slate-700 rounded-md transition-colors"
                                     >
                                         <LogOut className="w-4 h-4" />
-                                        Sign out
+                                        {t('topbar.signOut')}
                                     </button>
                                 </div>
                             </div>

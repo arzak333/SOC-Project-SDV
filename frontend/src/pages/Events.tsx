@@ -176,9 +176,6 @@ export default function Events() {
                 { value: 'firewall', label: 'Firewall' },
                 { value: 'ids', label: 'IDS' },
                 { value: 'endpoint', label: 'Endpoint' },
-                { value: 'network', label: 'Network' },
-                { value: 'email', label: 'Email' },
-                { value: 'active_directory', label: 'Active Directory' },
                 { value: 'application', label: 'Application' },
               ]}
             />

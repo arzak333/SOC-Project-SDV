@@ -80,8 +80,62 @@ The alert engine is now a **full correlation engine**:
   - Paginated API (`GET /api/incidents`, `GET /api/incidents/:id`, `PATCH /api/incidents/:id`)
 - [x] **Safe schema migration** (`migrate_db.py`) — `db.create_all()` + idempotent `ALTER TABLE` on startup; no Alembic dependency
 - [x] **Custom dropdown component** (`CustomSelect.tsx`) — replaces native `<select>` across Events and Incidents pages; fully theme-aware (CSS variables), works in both dark/light mode
-- [x] **Real infrastructure only** — log generator constrained to `endpoint-pc-01`, `endpoint-pc-02`, `firewall-gw`; fake AUDIO_* site data removed from DB
+- [x] **Real infrastructure only** — log generator constrained to `endpoint-pc-01`, `endpoint-pc-02`, `firewall-gw`, `glpi-crm`; fake AUDIO_* site data removed from DB
 - [x] **pytest suite** — backend test coverage for events, alert rules, dashboard, playbook runner
+
+---
+
+## Current Milestone: Version 1.4 — Dashboard Analytics & UX — COMPLETED
+
+### Completed ✓
+
+#### v1.3 Features
+- [x] **Automated backend testing** — pytest suite covering events, alert rules, dashboard, playbook runner
+- [x] **Automated playbook execution runner** — Celery-driven step execution
+
+#### v1.4 Features (Dashboard Analytics & UX)
+- [x] **Trend indicators on StatCards** — % change vs previous 24h for Security Events and Critical Alerts
+  - Backend: `events_prev_24h`, `critical_prev_24h` added to `/dashboard/stats`
+- [x] **Severity Trend Chart** — stacked area chart (daily breakdown by severity) for 7d/30d ranges
+  - Component: `SeverityTrendChart.tsx`; backend: `daily` array in `/dashboard/trends`
+- [x] **Activity Heatmap** — 7-day × 24-hour event density heatmap
+  - Component: `ActivityHeatmap.tsx`; backend: `GET /api/dashboard/heatmap`
+- [x] **Top Source IPs widget** — top 10 IPs with severity-colored bars
+  - Component: `TopSourceIPs.tsx`; backend: `GET /api/dashboard/top-ips` (JSONB query)
+- [x] **Quick Actions column** in RecentAlertsTable — Eye (view) + UserCheck (assign to me)
+- [x] **Alert Detail Modal — toggleable Quick Actions** — Create Ticket, Block IP, Isolate Endpoint, Run Playbook (instant feedback, re-clickable)
+- [x] **Degraded endpoint sub-text** — EndpointStatusCard shows reason for degraded/offline status
+- [x] **Live feed animation** — new alert rows flash blue highlight then fade (`animate-new-entry`)
+- [x] **Live mode toggle** — LIVE/Paused button with 10s auto-refresh
+- [x] **Interactive donut chart** — click source slice to filter alerts table
+
+---
+
+## Current Milestone: Version 1.5 — SOC Analyst UX Improvements — COMPLETED (superseded by v1.6)
+
+### Completed ✓
+
+#### v1.5 Features (SOC Analyst Feedback)
+- [x] **Language consistency** — All UI strings standardized to English (previously mixed French/English)
+- [x] **Event trend color fix** — More events = red (bad), fewer = green (good); amber for >50%, red for >100%
+- [x] **Alert grouping** — Duplicate alerts grouped by name+source in Recent Alerts table with count badge
+- [x] **False Positive quick action** — Ban icon in table actions column for one-click FP marking
+- [x] **IP Quick Actions (OSINT)** — Hover menu on Top Source IPs: Whois, VirusTotal, Block IP
+- [x] **Playbook integration** — Real playbook picker in Alert Detail Modal with Recommended badges
+
+---
+
+## Current Milestone: Version 1.6 — Internationalization (EN/FR) — COMPLETED
+
+### Completed ✓
+
+#### v1.6 Features (i18n)
+- [x] **EN/FR language toggle** — One-click toggle button in top header bar (🇬🇧 EN / 🇫🇷 FR)
+- [x] **LanguageContext provider** — Lightweight i18n system (no external library), same pattern as ThemeContext
+- [x] **Translations dictionary** — ~150 keys per language in `frontend/src/i18n/translations.ts`
+- [x] **Full component coverage** — All dashboard-facing components use `t()` for user-visible strings
+- [x] **Locale-aware formatting** — Dates/numbers formatted with `locale()` helper (`en-US` / `fr-FR`)
+- [x] **localStorage persistence** — Language preference survives page refresh
 
 ### In Progress 🚧
 None
@@ -89,6 +143,7 @@ None
 ### Not Yet Implemented
 - [ ] Email notification integration
 - [ ] Webhook notifications
+- [ ] Geolocation map (planned)
 
 ### Blocked ⛔
 None
@@ -101,3 +156,6 @@ None
 - 2026-02-04: **V1.1 COMPLETED** - Added JWT auth, theme toggle, export (CSV/PDF/JSON), playbooks backend with execution tracking, event volume timeframes, backfill option.
 - 2026-02-05: PDF export improved with html2pdf.js for direct download + better styling.
 - 2026-02-24: **V1.2 COMPLETED** — Event Correlation Engine (Incident model, migration, alert engine refactor), Incidents page (React), safe schema migration, CustomSelect component, log generator constrained to real infra (endpoint-pc-01/02, firewall-gw), pytest suite added.
+- 2026-02-26: **V1.4 COMPLETED** — Dashboard analytics: trend indicators (% change), severity trend chart, activity heatmap, top source IPs widget, quick actions (table + modal), degraded endpoint tooltips, live feed animation, interactive donut chart.
+- 2026-02-26: **V1.5 COMPLETED** — SOC analyst UX: language consistency (full English), trend color fix, alert grouping, FP quick action, IP OSINT actions (Whois/VT/Block), playbook integration on alerts.
+- 2026-02-27: **V1.6 COMPLETED** — Internationalization: EN/FR language toggle in header, LanguageContext provider, translations dictionary (~150 keys), full component coverage, locale-aware formatting, localStorage persistence.

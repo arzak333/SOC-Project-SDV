@@ -42,7 +42,10 @@ export interface AlertRule {
 export interface DashboardStats {
   total_events: number
   events_last_24h: number
+  events_prev_24h: number
   critical_open: number
+  critical_prev_24h: number
+  total_rule_triggers: number
   active_alerts: number
   total_sites: number
   open_incidents: number
@@ -51,10 +54,21 @@ export interface DashboardStats {
   by_source: Record<string, number>
 }
 
-export interface HeatmapEntry {
-  day: number   // 0=Sun, 1=Mon ... 6=Sat
-  hour: number  // 0-23
+export interface TopIP {
+  ip: string
   count: number
+  critical: number
+  high: number
+}
+
+export interface HeatmapEntry {
+  date: string
+  hour: number
+  count: number
+  critical: number
+  high: number
+  medium: number
+  low: number
 }
 
 export interface SiteSummary {

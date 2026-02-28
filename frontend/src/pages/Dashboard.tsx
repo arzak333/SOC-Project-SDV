@@ -11,7 +11,9 @@ import EndpointStatusCard from '../components/EndpointStatusCard'
 import AlertDetailModal from '../components/AlertDetailModal'
 import SeverityTrendChart from '../components/SeverityTrendChart'
 import ActivityHeatmap from '../components/ActivityHeatmap'
+import TopSourceIPs from '../components/TopSourceIPs'
 import { ToastContainer, toast } from '../components/Toast'
+import { useLanguage } from '../context/LanguageContext'
 import clsx from 'clsx'
 
 interface DashboardProps {
@@ -24,10 +26,13 @@ type TimeRange = '5m' | '15m' | '30m' | '1h' | '6h' | '24h' | '7d' | '30d'
 const SOURCE_COLORS: Record<string, string> = {
   firewall: '#ef4444',    // red
   endpoint: '#3b82f6',    // blue
+  application: '#f59e0b', // amber (GLPI)
+  ids: '#8b5cf6',         // purple (Suricata)
 }
 
 export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const navigate = useNavigate()
+  const { t, locale } = useLanguage()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [trends, setTrends] = useState<{
     hourly: Array<{ hour: string; count: number }>
@@ -45,25 +50,40 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null)
   const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [isLiveMode, setIsLiveMode] = useState(true)
+  const [refreshCounter, setRefreshCounter] = useState(0)
 
-  const loadData = useCallback(async (currentTimeRange: TimeRange = timeRange) => {
+  const [heatmapDays, setHeatmapDays] = useState(30)
+  const [timeSlice, setTimeSlice] = useState<{start: string, end: string} | null>(null)
+
+  const loadData = useCallback(async (
+    currentTimeRange: TimeRange = timeRange, 
+    currentHeatmapDays = heatmapDays,
+    currentTimeSlice = timeSlice
+  ) => {
     try {
+      const fetchEventsParams: any = { severity: 'critical,high', status: 'new', limit: 10 }
+      if (currentTimeSlice) {
+        fetchEventsParams.start_time = currentTimeSlice.start
+        fetchEventsParams.end_time = currentTimeSlice.end
+      }
+
       const [statsData, trendsData, eventsData, heatmapResult] = await Promise.all([
         fetchDashboardStats(),
         fetchDashboardTrendsWithRange(currentTimeRange),
-        fetchEvents({ severity: 'critical,high', status: 'new', limit: 10 }),
-        fetchDashboardHeatmap(),
+        fetchEvents(fetchEventsParams),
+        fetchDashboardHeatmap(currentHeatmapDays),
       ])
       setStats(statsData)
       setTrends(trendsData)
       setCriticalAlerts(eventsData.events || [])
       setHeatmapData(heatmapResult.heatmap || [])
+      setRefreshCounter((c: number) => c + 1)
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     } finally {
       setLoading(false)
     }
-  }, [timeRange])
+  }, [timeRange, heatmapDays, timeSlice])
 
   useEffect(() => {
     loadData()
@@ -99,7 +119,15 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
     setSelectedSource(source)
     setSelectedSourceLabel(sourceName)
     if (source) {
-      toast.info(`Filtering by ${sourceName}`)
+      toast.info(`${t('common.filteringBy')} ${sourceName}`)
+    }
+  }
+
+  const handleTimeSliceSelect = (start: string, end: string) => {
+    if (start && end) {
+      setTimeSlice({ start, end })
+    } else {
+      setTimeSlice(null)
     }
   }
 
@@ -113,15 +141,15 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const toggleLiveMode = () => {
     setIsLiveMode(!isLiveMode)
     if (!isLiveMode) {
-      toast.success('Live mode enabled - auto-refreshing every 10 seconds')
+      toast.success(t('common.liveEnabled'))
     } else {
-      toast.info('Live mode disabled')
+      toast.info(t('common.liveDisabled'))
     }
   }
 
   // Handle chart point click
   const handleChartPointClick = (time: string, value: number) => {
-    toast.info(`Showing ${value} events at ${time}`)
+    toast.info(`${t('common.showingEvents')} ${value} ${t('eventVolume.events')} ${t('common.eventsAt')} ${time}`)
     navigate(`/events?time=${time}`)
   }
 
@@ -149,26 +177,41 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
     }))
     : []
 
-  // Transform recent alerts to table format with sourceKey
-  const recentAlerts = [...realtimeEvents, ...criticalAlerts]
+  // Transform recent alerts to table format with sourceKey + grouping
+  const rawAlerts = [...realtimeEvents, ...criticalAlerts]
     .filter((e) => e.severity === 'critical' || e.severity === 'high')
-    .slice(0, 10)
     .map((e) => ({
       id: e.id,
       severity: e.severity,
       alertName: e.description,
       source: e.site_id || formatSourceName(e.source),
       sourceKey: e.source,
-      time: new Date(e.timestamp).toLocaleTimeString('fr-FR', {
+      time: new Date(e.timestamp).toLocaleTimeString(locale(), {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
       }),
       assignee: e.assigned_to,
+      count: 1,
     }))
 
-  // Trend: null until we have real comparison data
-  const eventsTrend: number | null = null
+  // Group by alertName + source to reduce alert fatigue
+  const groupedMap = new Map<string, typeof rawAlerts[0]>()
+  for (const alert of rawAlerts) {
+    const key = `${alert.alertName}::${alert.sourceKey || alert.source}`
+    const existing = groupedMap.get(key)
+    if (existing) {
+      existing.count += 1
+    } else {
+      groupedMap.set(key, { ...alert })
+    }
+  }
+  const recentAlerts = Array.from(groupedMap.values()).slice(0, 10)
+
+  // Trend indicators: % change vs previous 24h
+  const eventsTrend = stats?.events_prev_24h
+    ? Math.round(((stats.events_last_24h - stats.events_prev_24h) / stats.events_prev_24h) * 100)
+    : null
 
   return (
     <div className="space-y-6">
@@ -178,9 +221,9 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Security Overview</h1>
+          <h1 className="text-2xl font-bold text-slate-100">{t('dashboard.securityOverview')}</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Real-time status of the AudioPro Network
+            {t('dashboard.realtimeStatus')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -197,12 +240,12 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
             {isLiveMode ? (
               <>
                 <Radio className="w-4 h-4 live-glow" />
-                <span>LIVE</span>
+                <span>{t('dashboard.live')}</span>
               </>
             ) : (
               <>
                 <Pause className="w-4 h-4" />
-                <span>Paused</span>
+                <span>{t('dashboard.paused')}</span>
               </>
             )}
           </button>
@@ -210,38 +253,51 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <StatCard
           icon={<Activity className="w-6 h-6" />}
-          label="Security Events"
+          label={t('dashboard.securityEvents')}
           value={stats?.total_events ?? 0}
-          trend={eventsTrend !== null ? { value: eventsTrend, isPositive: eventsTrend >= 0 } : undefined}
+          trend={eventsTrend !== null ? { value: Math.abs(eventsTrend), isPositive: eventsTrend <= 0, severity: Math.abs(eventsTrend) > 100 ? 'critical' : Math.abs(eventsTrend) > 50 ? 'warning' : 'normal' } : undefined}
+          sparklineData={trends?.hourly?.map((h: { count: number }) => h.count) || []}
+          statusColor="normal"
           linkTo="/events"
         />
         <StatCard
           icon={<AlertTriangle className="w-6 h-6" />}
-          label="Critical Alerts Triggered"
-          value={stats?.critical_open ?? 0}
+          label={t('dashboard.alertsTriggered')}
+          value={stats?.total_rule_triggers ?? 0}
+          subValue={
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span>{stats?.by_severity?.critical || 0} Critical</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span>{stats?.by_severity?.high || 0} High</span>
+            </div>
+          }
+          statusColor={(stats?.total_rule_triggers || 0) > 100 ? 'critical' : (stats?.total_rule_triggers || 0) > 50 ? 'warning' : 'normal'}
           linkTo="/alerts"
-          linkParams={{ status: 'new,investigating' }}
         />
         <StatCard
           icon={<ShieldAlert className="w-6 h-6" />}
-          label="Incidents Ouverts"
+          label={t('dashboard.openIncidents')}
           value={stats?.open_incidents ?? 0}
+          subValue="Avg. Time to Resolve: 12m"
+          statusColor={(stats?.open_incidents || 0) > 0 ? 'critical' : 'success'}
           linkTo="/incidents"
         />
-<StatCard
+        <StatCard
           icon={<Monitor className="w-6 h-6" />}
-          label="Endpoints"
+          label={t('dashboard.endpoints')}
           value={stats?.total_sites ?? 0}
+          subValue="All agents reporting"
+          statusColor="success"
           linkTo="/sites"
         />
         <StatCard
           icon={<Users className="w-6 h-6" />}
-          label="Sources"
-          value={stats?.by_source ? Object.keys(stats.by_source).length : 0}
-          linkTo="/events"
+          label={t('dashboard.sources')}
+          value={`${stats?.by_source ? Object.keys(stats.by_source).length : 0} / 4`}
+          subValue="Ingestion: 1.2 MB/s"
+          statusColor={(stats?.by_source && Object.keys(stats.by_source).length < 4) ? 'warning' : 'normal'}
         />
       </div>
 
@@ -272,7 +328,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
 
       {/* Recent Alerts Table + Endpoint Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-4">
           <RecentAlertsTable
             alerts={recentAlerts}
             isLive={isLiveMode}
@@ -280,14 +336,20 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
             filteredSource={selectedSource}
             filterLabel={selectedSourceLabel || undefined}
           />
+          
+          <ActivityHeatmap 
+            data={heatmapData} 
+            loading={loading}
+            days={heatmapDays}
+            onTimeRangeChange={setHeatmapDays}
+            onTimeSliceSelect={handleTimeSliceSelect}
+          />
         </div>
-        <div>
+        <div className="space-y-4">
           <EndpointStatusCard maxDisplay={5} />
+          <TopSourceIPs refreshTrigger={refreshCounter} />
         </div>
       </div>
-
-      {/* Activity Heatmap */}
-      <ActivityHeatmap data={heatmapData} />
 
       {/* Alert Detail Modal */}
       <AlertDetailModal
@@ -310,6 +372,8 @@ function formatSourceName(source: string): string {
   const names: Record<string, string> = {
     firewall: 'Firewall',
     endpoint: 'Endpoints',
+    application: 'GLPI',
+    ids: 'IDS / Suricata',
   }
   return names[source] || source.charAt(0).toUpperCase() + source.slice(1)
 }

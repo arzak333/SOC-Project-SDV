@@ -8,7 +8,7 @@ Plateforme de démonstration d'un SOC (Security Operations Center) externalisé 
 |---|---|
 | **Client** | Réseau de ~30 centres d'audioprothésistes en France, sans équipe sécurité interne |
 | **Besoin** | Supervision centralisée de la sécurité informatique de l'ensemble des points de vente |
-| **Solution** | SOC externalisé avec collecte multi-source (firewall, endpoints), détection en temps réel via Wazuh SIEM, corrélation d'événements et réponse automatisée |
+| **Solution** | SOC externalisé avec collecte multi-source (firewall, endpoints, GLPI), détection en temps réel via Wazuh SIEM, corrélation d'événements et réponse automatisée |
 | **Projet** | Projet de fin d'année - M2 Cybersécurité, SDV Sup de Vinci (2026) |
 
 ## Architecture
@@ -36,11 +36,12 @@ Une alerte détectée par Wazuh est ingérée par le SOC, matchée par une règl
 
 ### Autres Fonctionnalités
 
-- **Dashboard temps réel** avec WebSocket et KPI par sévérité
-- **Gestion des événements** avec filtres, recherche, assignation, commentaires
+- **Dashboard temps réel** avec WebSocket, KPI par sévérité, indicateurs de tendance (% vs J-1)
+- **Analytics avancés** : heatmap d'activité, top source IPs avec actions OSINT (Whois, VirusTotal, Block), severity trend chart, donut interactif
+- **Gestion des événements** avec filtres, recherche, assignation, groupement d'alertes, marquage faux positif rapide
 - **Authentification JWT** avec rôles (admin, analyst, supervisor)
 - **Export** CSV, PDF, JSON
-- **Playbooks** avec exécution étape par étape
+- **Playbooks** avec exécution étape par étape et intégration directe depuis les alertes
 - **Infrastructure simulée** : Wazuh SIEM + endpoints + firewall + GLPI
 
 ## Stack Technique
@@ -123,6 +124,7 @@ python3 scripts/log_generator.py --backfill --days 30 --count 2000  # Historique
 - [x] Dashboards & alertes configurés
 - [x] Playbooks / procédures
 - [x] Moteur de corrélation et gestion des Incidents (v1.2)
+- [x] Dashboard analytics avancés (v1.4)
 - [x] Rapport technique complet
 - [ ] Guide de déploiement & d'utilisation
 - [ ] Vidéo de démonstration

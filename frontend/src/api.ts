@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident, HeatmapEntry } from './types'
+import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident, HeatmapEntry, TopIP } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -52,11 +52,6 @@ export async function fetchDashboardTrends(): Promise<{
 
 export async function fetchSitesSummary(): Promise<{ sites: SiteSummary[] }> {
   const { data } = await api.get('/dashboard/sites')
-  return data
-}
-
-export async function fetchDashboardHeatmap(): Promise<{ heatmap: HeatmapEntry[] }> {
-  const { data } = await api.get('/dashboard/heatmap')
   return data
 }
 
@@ -144,6 +139,16 @@ export async function fetchDashboardTrendsWithRange(timeframe: string): Promise<
   timeframe: string
 }> {
   const { data } = await api.get('/dashboard/trends', { params: { timeframe } })
+  return data
+}
+
+export async function fetchDashboardHeatmap(days?: number): Promise<{ heatmap: HeatmapEntry[], days: number }> {
+  const { data } = await api.get('/dashboard/heatmap', { params: days ? { days } : {} })
+  return data
+}
+
+export async function fetchTopIPs(hours?: number): Promise<{ top_ips: TopIP[] }> {
+  const { data } = await api.get('/dashboard/top-ips', { params: hours ? { hours } : {} })
   return data
 }
 
