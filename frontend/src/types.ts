@@ -62,9 +62,13 @@ export interface TopIP {
 }
 
 export interface HeatmapEntry {
-  day: number   // 0=Sun, 1=Mon ... 6=Sat
-  hour: number  // 0-23
+  date: string
+  hour: number
   count: number
+  critical: number
+  high: number
+  medium: number
+  low: number
 }
 
 export interface SiteSummary {

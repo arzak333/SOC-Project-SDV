@@ -2,12 +2,20 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import func, case
 from datetime import datetime, timedelta
 from app import db
-from app.models import Event, EventStatus, EventSeverity, EventSource, Incident, IncidentStatus, AlertRule
+from app.models import (
+    Event,
+    EventStatus,
+    EventSeverity,
+    EventSource,
+    Incident,
+    IncidentStatus,
+    AlertRule,
+)
 
-dashboard_bp = Blueprint('dashboard', __name__)
+dashboard_bp = Blueprint("dashboard", __name__)
 
 
-@dashboard_bp.route('/dashboard/stats', methods=['GET'])
+@dashboard_bp.route("/dashboard/stats", methods=["GET"])
 def get_stats():
     """Get dashboard statistics."""
     now = datetime.utcnow()
@@ -23,8 +31,7 @@ def get_stats():
     # Events in previous 24h (for trend comparison)
     prev_24h_start = last_24h - timedelta(hours=24)
     events_prev_24h = Event.query.filter(
-        Event.timestamp >= prev_24h_start,
-        Event.timestamp < last_24h
+        Event.timestamp >= prev_24h_start, Event.timestamp < last_24h
     ).count()
 
     # Critical open in previous 24h (for trend comparison)
@@ -32,7 +39,7 @@ def get_stats():
         Event.severity == EventSeverity.CRITICAL,
         Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
         Event.created_at >= prev_24h_start,
-        Event.created_at < last_24h
+        Event.created_at < last_24h,
     ).count()
 
     # Events by status
@@ -52,7 +59,7 @@ def get_stats():
     # Critical events not resolved
     critical_open = Event.query.filter(
         Event.severity == EventSeverity.CRITICAL,
-        Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING])
+        Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
     ).count()
 
     # All unresolved events (any severity)
@@ -68,42 +75,50 @@ def get_stats():
     )
 
     # Unique sites
-    total_sites = db.session.query(func.count(func.distinct(Event.site_id))).scalar() or 0
+    total_sites = (
+        db.session.query(func.count(func.distinct(Event.site_id))).scalar() or 0
+    )
 
     # Total alert rule triggers (sum of trigger_count across all rules)
-    total_rule_triggers = db.session.query(func.coalesce(func.sum(AlertRule.trigger_count), 0)).scalar()
+    total_rule_triggers = db.session.query(
+        func.coalesce(func.sum(AlertRule.trigger_count), 0)
+    ).scalar()
 
     # Open incidents
     open_incidents = Incident.query.filter(
-        Incident.status.in_([IncidentStatus.NEW, IncidentStatus.OPEN, IncidentStatus.INVESTIGATING])
+        Incident.status.in_(
+            [IncidentStatus.NEW, IncidentStatus.OPEN, IncidentStatus.INVESTIGATING]
+        )
     ).count()
 
-    return jsonify({
-        'total_events': total_events,
-        'events_last_24h': events_24h,
-        'events_prev_24h': events_prev_24h,
-        'critical_open': critical_open,
-        'critical_prev_24h': critical_prev_24h,
-        'total_rule_triggers': total_rule_triggers,
-        'active_alerts': active_alerts,
-        'total_sites': total_sites,
-        'open_incidents': open_incidents,
-        'by_status': {
-            status.value if hasattr(status, 'value') else str(status): count
-            for status, count in status_counts.items()
-        },
-        'by_severity': {
-            sev.value if hasattr(sev, 'value') else str(sev): count
-            for sev, count in severity_counts.items()
-        },
-        'by_source': {
-            src.value if hasattr(src, 'value') else str(src): count
-            for src, count in source_counts.items()
+    return jsonify(
+        {
+            "total_events": total_events,
+            "events_last_24h": events_24h,
+            "events_prev_24h": events_prev_24h,
+            "critical_open": critical_open,
+            "critical_prev_24h": critical_prev_24h,
+            "total_rule_triggers": total_rule_triggers,
+            "active_alerts": active_alerts,
+            "total_sites": total_sites,
+            "open_incidents": open_incidents,
+            "by_status": {
+                status.value if hasattr(status, "value") else str(status): count
+                for status, count in status_counts.items()
+            },
+            "by_severity": {
+                sev.value if hasattr(sev, "value") else str(sev): count
+                for sev, count in severity_counts.items()
+            },
+            "by_source": {
+                src.value if hasattr(src, "value") else str(src): count
+                for src, count in source_counts.items()
+            },
         }
-    })
+    )
 
 
-@dashboard_bp.route('/dashboard/trends', methods=['GET'])
+@dashboard_bp.route("/dashboard/trends", methods=["GET"])
 def get_trends():
     """Get event trends over time.
 
@@ -111,37 +126,41 @@ def get_trends():
         timeframe: '5m', '15m', '30m', '1h', '6h', '24h', '7d', '30d' (default: '24h')
     """
     now = datetime.utcnow()
-    timeframe = request.args.get('timeframe', '24h')
+    timeframe = request.args.get("timeframe", "24h")
 
     # Define timeframe configurations
     # interval_minutes: for custom minute-based grouping (0 means use trunc directly)
     timeframe_config = {
-        '5m': {'delta': timedelta(minutes=5), 'trunc': 'minute', 'interval_minutes': 0},
-        '15m': {'delta': timedelta(minutes=15), 'trunc': 'minute', 'interval_minutes': 0},
-        '30m': {'delta': timedelta(minutes=30), 'interval_minutes': 2},
-        '1h': {'delta': timedelta(hours=1), 'interval_minutes': 5},
-        '6h': {'delta': timedelta(hours=6), 'interval_minutes': 30},
-        '24h': {'delta': timedelta(hours=24), 'trunc': 'hour', 'interval_minutes': 0},
-        '7d': {'delta': timedelta(days=7), 'trunc': 'hour', 'interval_minutes': 0},
-        '30d': {'delta': timedelta(days=30), 'trunc': 'day', 'interval_minutes': 0},
+        "5m": {"delta": timedelta(minutes=5), "trunc": "minute", "interval_minutes": 0},
+        "15m": {
+            "delta": timedelta(minutes=15),
+            "trunc": "minute",
+            "interval_minutes": 0,
+        },
+        "30m": {"delta": timedelta(minutes=30), "interval_minutes": 2},
+        "1h": {"delta": timedelta(hours=1), "interval_minutes": 5},
+        "6h": {"delta": timedelta(hours=6), "interval_minutes": 30},
+        "24h": {"delta": timedelta(hours=24), "trunc": "hour", "interval_minutes": 0},
+        "7d": {"delta": timedelta(days=7), "trunc": "hour", "interval_minutes": 0},
+        "30d": {"delta": timedelta(days=30), "trunc": "day", "interval_minutes": 0},
     }
 
-    config = timeframe_config.get(timeframe, timeframe_config['24h'])
-    start_time = now - config['delta']
-    interval_minutes = config.get('interval_minutes', 0)
-    trunc_unit = config.get('trunc')
+    config = timeframe_config.get(timeframe, timeframe_config["24h"])
+    start_time = now - config["delta"]
+    interval_minutes = config.get("interval_minutes", 0)
+    trunc_unit = config.get("trunc")
 
     # Get event counts grouped by time unit
     if interval_minutes > 0:
         # Custom interval grouping using epoch-based rounding
         interval_seconds = interval_minutes * 60
         time_bucket = func.to_timestamp(
-            func.floor(func.extract('epoch', Event.timestamp) / interval_seconds) * interval_seconds
+            func.floor(func.extract("epoch", Event.timestamp) / interval_seconds)
+            * interval_seconds
         )
         time_counts = (
             db.session.query(
-                time_bucket.label('time_bucket'),
-                func.count(Event.id).label('count')
+                time_bucket.label("time_bucket"), func.count(Event.id).label("count")
             )
             .filter(Event.timestamp >= start_time)
             .group_by(time_bucket)
@@ -152,97 +171,130 @@ def get_trends():
         # Standard date_trunc grouping
         time_counts = (
             db.session.query(
-                func.date_trunc(trunc_unit, Event.timestamp).label('time_bucket'),
-                func.count(Event.id).label('count')
+                func.date_trunc(trunc_unit, Event.timestamp).label("time_bucket"),
+                func.count(Event.id).label("count"),
             )
             .filter(Event.timestamp >= start_time)
-            .group_by('time_bucket')
-            .order_by('time_bucket')
+            .group_by("time_bucket")
+            .order_by("time_bucket")
             .all()
         )
 
     # Format results based on timeframe
     hourly = []
     for t, c in time_counts:
-        if trunc_unit == 'day':
-            hourly.append({'hour': t.strftime('%Y-%m-%d'), 'count': c})
-        elif trunc_unit == 'hour' and timeframe == '7d':
-            hourly.append({'hour': t.strftime('%m-%d %H:%M'), 'count': c})
+        if trunc_unit == "day":
+            hourly.append({"hour": t.strftime("%Y-%m-%d"), "count": c})
+        elif trunc_unit == "hour" and timeframe == "7d":
+            hourly.append({"hour": t.strftime("%m-%d %H:%M"), "count": c})
         else:
-            hourly.append({'hour': t.strftime('%H:%M'), 'count': c})
+            hourly.append({"hour": t.strftime("%H:%M"), "count": c})
 
     # Daily counts by severity (for longer timeframes)
     daily = {}
-    if timeframe in ['7d', '30d']:
+    if timeframe in ["7d", "30d"]:
         daily_severity = (
             db.session.query(
-                func.date_trunc('day', Event.timestamp).label('day'),
+                func.date_trunc("day", Event.timestamp).label("day"),
                 Event.severity,
-                func.count(Event.id).label('count')
+                func.count(Event.id).label("count"),
             )
             .filter(Event.timestamp >= start_time)
-            .group_by('day', Event.severity)
-            .order_by('day')
+            .group_by("day", Event.severity)
+            .order_by("day")
             .all()
         )
 
         for day, severity, count in daily_severity:
             day_str = day.isoformat()[:10]
             if day_str not in daily:
-                daily[day_str] = {'date': day_str, 'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+                daily[day_str] = {
+                    "date": day_str,
+                    "critical": 0,
+                    "high": 0,
+                    "medium": 0,
+                    "low": 0,
+                }
             daily[day_str][severity.value] = count
 
-    return jsonify({
-        'hourly': hourly,
-        'daily': list(daily.values()),
-        'timeframe': timeframe
-    })
+    return jsonify(
+        {"hourly": hourly, "daily": list(daily.values()), "timeframe": timeframe}
+    )
 
 
-@dashboard_bp.route('/dashboard/heatmap', methods=['GET'])
+@dashboard_bp.route("/dashboard/heatmap", methods=["GET"])
 def get_heatmap():
-    """Get event activity heatmap — count by day-of-week × hour-of-day (last 30 days)."""
-    since = datetime.utcnow() - timedelta(days=30)
+    """Get event activity heatmap — count by date × hour-of-day."""
+    days = request.args.get("days", 30, type=int)
+
+    # We want to get the last N days including today, starting at midnight
+    now = datetime.utcnow()
+    since = now - timedelta(days=days - 1)
+    since = since.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Note: EventSeverity values are typically lowercase like 'critical', 'high'
     results = (
         db.session.query(
-            func.extract('dow', Event.timestamp).label('day'),
-            func.extract('hour', Event.timestamp).label('hour'),
-            func.count(Event.id).label('count')
+            func.date_trunc("day", Event.timestamp).label("date"),
+            func.extract("hour", Event.timestamp).label("hour"),
+            func.count(Event.id).label("count"),
+            func.sum(
+                case((Event.severity == EventSeverity.CRITICAL, 1), else_=0)
+            ).label("critical"),
+            func.sum(case((Event.severity == EventSeverity.HIGH, 1), else_=0)).label(
+                "high"
+            ),
+            func.sum(case((Event.severity == EventSeverity.MEDIUM, 1), else_=0)).label(
+                "medium"
+            ),
+            func.sum(case((Event.severity == EventSeverity.LOW, 1), else_=0)).label(
+                "low"
+            ),
         )
         .filter(Event.timestamp >= since)
-        .group_by('day', 'hour')
+        .group_by("date", "hour")
         .all()
     )
-    data = [{'day': int(r.day), 'hour': int(r.hour), 'count': r.count} for r in results]
-    return jsonify({'heatmap': data})
+
+    data = [
+        {
+            "date": r.date.strftime("%Y-%m-%d"),
+            "hour": int(r.hour),
+            "count": r.count,
+            "critical": int(r.critical) if r.critical else 0,
+            "high": int(r.high) if r.high else 0,
+            "medium": int(r.medium) if r.medium else 0,
+            "low": int(r.low) if r.low else 0,
+        }
+        for r in results
+    ]
+    return jsonify({"heatmap": data, "days": days})
 
 
-@dashboard_bp.route('/dashboard/top-ips', methods=['GET'])
+@dashboard_bp.route("/dashboard/top-ips", methods=["GET"])
 def get_top_ips():
     """Get top source IPs by event count (from JSONB metadata)."""
-    hours = request.args.get('hours', 24, type=int)
+    hours = request.args.get("hours", 24, type=int)
     since = datetime.utcnow() - timedelta(hours=hours)
 
-    ip_field = Event.event_metadata['source_ip'].astext
+    ip_field = Event.event_metadata["source_ip"].astext
 
     results = (
         db.session.query(
-            ip_field.label('ip'),
-            func.count(Event.id).label('count'),
-            func.sum(case(
-                (Event.severity == EventSeverity.CRITICAL, 1),
-                else_=0
-            )).label('critical'),
-            func.sum(case(
-                (Event.severity == EventSeverity.HIGH, 1),
-                else_=0
-            )).label('high')
+            ip_field.label("ip"),
+            func.count(Event.id).label("count"),
+            func.sum(
+                case((Event.severity == EventSeverity.CRITICAL, 1), else_=0)
+            ).label("critical"),
+            func.sum(case((Event.severity == EventSeverity.HIGH, 1), else_=0)).label(
+                "high"
+            ),
         )
         .filter(
             Event.timestamp >= since,
             ip_field.isnot(None),
-            ip_field != 'null',
-            ip_field != ''
+            ip_field != "null",
+            ip_field != "",
         )
         .group_by(ip_field)
         .order_by(func.count(Event.id).desc())
@@ -250,21 +302,28 @@ def get_top_ips():
         .all()
     )
 
-    return jsonify({'top_ips': [
-        {'ip': r.ip, 'count': r.count, 'critical': int(r.critical), 'high': int(r.high)}
-        for r in results
-    ]})
+    return jsonify(
+        {
+            "top_ips": [
+                {
+                    "ip": r.ip,
+                    "count": r.count,
+                    "critical": int(r.critical),
+                    "high": int(r.high),
+                }
+                for r in results
+            ]
+        }
+    )
 
 
-@dashboard_bp.route('/dashboard/sites', methods=['GET'])
+@dashboard_bp.route("/dashboard/sites", methods=["GET"])
 def get_sites_summary():
     """Get summary by site (for multi-site audioprothésistes network)."""
     # Events by site with severity breakdown
     site_stats = (
         db.session.query(
-            Event.site_id,
-            Event.severity,
-            func.count(Event.id).label('count')
+            Event.site_id, Event.severity, func.count(Event.id).label("count")
         )
         .filter(Event.site_id.isnot(None))
         .group_by(Event.site_id, Event.severity)
@@ -276,17 +335,17 @@ def get_sites_summary():
     for site_id, severity, count in site_stats:
         if site_id not in sites:
             sites[site_id] = {
-                'site_id': site_id,
-                'total': 0,
-                'critical': 0,
-                'high': 0,
-                'medium': 0,
-                'low': 0
+                "site_id": site_id,
+                "total": 0,
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
             }
         sites[site_id][severity.value] = count
-        sites[site_id]['total'] += count
+        sites[site_id]["total"] += count
 
     # Sort by total events descending
-    sorted_sites = sorted(sites.values(), key=lambda x: x['total'], reverse=True)
+    sorted_sites = sorted(sites.values(), key=lambda x: x["total"], reverse=True)
 
-    return jsonify({'sites': sorted_sites})
+    return jsonify({"sites": sorted_sites})

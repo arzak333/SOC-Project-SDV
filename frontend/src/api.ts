@@ -142,8 +142,8 @@ export async function fetchDashboardTrendsWithRange(timeframe: string): Promise<
   return data
 }
 
-export async function fetchDashboardHeatmap(): Promise<{ heatmap: HeatmapEntry[] }> {
-  const { data } = await api.get('/dashboard/heatmap')
+export async function fetchDashboardHeatmap(days?: number): Promise<{ heatmap: HeatmapEntry[], days: number }> {
+  const { data } = await api.get('/dashboard/heatmap', { params: days ? { days } : {} })
   return data
 }
 

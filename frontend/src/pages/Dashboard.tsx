@@ -52,13 +52,26 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
   const [isLiveMode, setIsLiveMode] = useState(true)
   const [refreshCounter, setRefreshCounter] = useState(0)
 
-  const loadData = useCallback(async (currentTimeRange: TimeRange = timeRange) => {
+  const [heatmapDays, setHeatmapDays] = useState(30)
+  const [timeSlice, setTimeSlice] = useState<{start: string, end: string} | null>(null)
+
+  const loadData = useCallback(async (
+    currentTimeRange: TimeRange = timeRange, 
+    currentHeatmapDays = heatmapDays,
+    currentTimeSlice = timeSlice
+  ) => {
     try {
+      const fetchEventsParams: any = { severity: 'critical,high', status: 'new', limit: 10 }
+      if (currentTimeSlice) {
+        fetchEventsParams.start_time = currentTimeSlice.start
+        fetchEventsParams.end_time = currentTimeSlice.end
+      }
+
       const [statsData, trendsData, eventsData, heatmapResult] = await Promise.all([
         fetchDashboardStats(),
         fetchDashboardTrendsWithRange(currentTimeRange),
-        fetchEvents({ severity: 'critical,high', status: 'new', limit: 10 }),
-        fetchDashboardHeatmap(),
+        fetchEvents(fetchEventsParams),
+        fetchDashboardHeatmap(currentHeatmapDays),
       ])
       setStats(statsData)
       setTrends(trendsData)
@@ -70,7 +83,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
     } finally {
       setLoading(false)
     }
-  }, [timeRange])
+  }, [timeRange, heatmapDays, timeSlice])
 
   useEffect(() => {
     loadData()
@@ -107,6 +120,14 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
     setSelectedSourceLabel(sourceName)
     if (source) {
       toast.info(`${t('common.filteringBy')} ${sourceName}`)
+    }
+  }
+
+  const handleTimeSliceSelect = (start: string, end: string) => {
+    if (start && end) {
+      setTimeSlice({ start, end })
+    } else {
+      setTimeSlice(null)
     }
   }
 
@@ -292,7 +313,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
 
       {/* Recent Alerts Table + Endpoint Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-4">
           <RecentAlertsTable
             alerts={recentAlerts}
             isLive={isLiveMode}
@@ -300,15 +321,20 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
             filteredSource={selectedSource}
             filterLabel={selectedSourceLabel || undefined}
           />
+          
+          <ActivityHeatmap 
+            data={heatmapData} 
+            loading={loading}
+            days={heatmapDays}
+            onTimeRangeChange={setHeatmapDays}
+            onTimeSliceSelect={handleTimeSliceSelect}
+          />
         </div>
         <div className="space-y-4">
           <EndpointStatusCard maxDisplay={5} />
           <TopSourceIPs refreshTrigger={refreshCounter} />
         </div>
       </div>
-
-      {/* Activity Heatmap */}
-      <ActivityHeatmap data={heatmapData} />
 
       {/* Alert Detail Modal */}
       <AlertDetailModal
