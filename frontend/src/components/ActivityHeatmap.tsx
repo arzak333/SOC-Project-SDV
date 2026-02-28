@@ -14,13 +14,13 @@ interface Props {
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 
 function getCellColor(count: number, max: number): string {
-  if (count === 0 || max === 0) return 'bg-slate-800/60'
+  if (count === 0 || max === 0) return 'bg-slate-800/40 border border-slate-700/50'
   const ratio = count / max
-  if (ratio < 0.15) return 'bg-blue-900/80'
-  if (ratio < 0.35) return 'bg-blue-700/80'
-  if (ratio < 0.6)  return 'bg-blue-500/90'
-  if (ratio < 0.8)  return 'bg-orange-500/90'
-  return 'bg-red-500/90'
+  if (ratio < 0.15) return 'bg-blue-900/80 border border-blue-800/50'
+  if (ratio < 0.35) return 'bg-blue-700/80 border border-blue-600/50'
+  if (ratio < 0.6)  return 'bg-blue-500/90 border border-blue-400/50'
+  if (ratio < 0.8)  return 'bg-orange-500/90 border border-orange-400/50'
+  return 'bg-red-500/90 border border-red-400/50'
 }
 
 export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeChange, onTimeSliceSelect }: Props) {
@@ -119,8 +119,8 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
           {/* Legend */}
           <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
             <span>Low</span>
-            {['bg-slate-800/60', 'bg-blue-900/80', 'bg-blue-700/80', 'bg-blue-500/90', 'bg-orange-500/90', 'bg-red-500/90'].map((c) => (
-              <div key={c} className={`w-3 h-3 rounded-sm ${c}`} />
+            {['bg-slate-800/40 border border-slate-700/50', 'bg-blue-900/80 border border-blue-800/50', 'bg-blue-700/80 border border-blue-600/50', 'bg-blue-500/90 border border-blue-400/50', 'bg-orange-500/90 border border-orange-400/50', 'bg-red-500/90 border border-red-400/50'].map((c) => (
+              <div key={c} className={`w-3 h-3 rounded-[1px] ${c}`} />
             ))}
             <span>High</span>
           </div>
@@ -143,7 +143,7 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
           <div className="w-14 shrink-0" />
           <div className="flex flex-1">
             {HOURS.map((h) => (
-              <div key={h} className="flex-1 text-center text-slate-500 font-medium" style={{ fontSize: 10 }}>
+              <div key={h} className="flex-1 min-w-0 w-0 text-center text-slate-500 font-medium" style={{ fontSize: 10 }}>
                 {h % 4 === 0 ? `${h}h` : ''}
               </div>
             ))}
@@ -156,7 +156,7 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
             <div className="w-14 shrink-0 text-right pr-2 text-slate-500 text-[10px] uppercase font-medium tracking-wider">
               {label}
             </div>
-            <div className="flex flex-1 gap-px h-full py-[1px]">
+            <div className="flex flex-1 gap-[2px] h-full py-[1px]">
               {HOURS.map((h) => {
                 const key = `${date}-${h}`
                 const entry = grid.map.get(key)
@@ -169,10 +169,10 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
                   <div
                     key={h}
                     className={clsx(
-                      "flex-1 rounded-sm cursor-pointer relative group transition-all duration-150",
+                      "flex-1 min-w-0 w-0 rounded-[1px] cursor-pointer relative group transition-all duration-150",
                       getCellColor(count, grid.max),
                       isHovered && "ring-2 ring-white/50 z-10 scale-110",
-                      isSelected && "ring-2 ring-white z-10 animate-pulse",
+                      isSelected && "ring-[3px] ring-white z-10 animate-pulse",
                       isColumnHovered && !isHovered && "brightness-125",
                       !isColumnHovered && hoveredCell && "opacity-40"
                     )}
@@ -210,7 +210,7 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
           <div className="w-14 shrink-0" />
           <div className="flex flex-1">
             {HOURS.map((h) => (
-              <div key={h} className="flex-1 text-center text-slate-500 font-medium" style={{ fontSize: 10 }}>
+              <div key={h} className="flex-1 min-w-0 w-0 text-center text-slate-500 font-medium" style={{ fontSize: 10 }}>
                 {h % 4 === 0 ? `${h}h` : ''}
               </div>
             ))}
