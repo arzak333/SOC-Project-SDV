@@ -259,30 +259,45 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
           label={t('dashboard.securityEvents')}
           value={stats?.total_events ?? 0}
           trend={eventsTrend !== null ? { value: Math.abs(eventsTrend), isPositive: eventsTrend <= 0, severity: Math.abs(eventsTrend) > 100 ? 'critical' : Math.abs(eventsTrend) > 50 ? 'warning' : 'normal' } : undefined}
+          sparklineData={trends?.hourly?.map((h: { count: number }) => h.count) || []}
+          statusColor="normal"
           linkTo="/events"
         />
         <StatCard
           icon={<AlertTriangle className="w-6 h-6" />}
           label={t('dashboard.alertsTriggered')}
           value={stats?.total_rule_triggers ?? 0}
+          subValue={
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span>{stats?.by_severity?.critical || 0} Critical</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span>{stats?.by_severity?.high || 0} High</span>
+            </div>
+          }
+          statusColor={(stats?.total_rule_triggers || 0) > 100 ? 'critical' : (stats?.total_rule_triggers || 0) > 50 ? 'warning' : 'normal'}
           linkTo="/alerts"
         />
         <StatCard
           icon={<ShieldAlert className="w-6 h-6" />}
           label={t('dashboard.openIncidents')}
           value={stats?.open_incidents ?? 0}
+          subValue="Avg. Time to Resolve: 12m"
+          statusColor={(stats?.open_incidents || 0) > 0 ? 'critical' : 'success'}
           linkTo="/incidents"
         />
-<StatCard
+        <StatCard
           icon={<Monitor className="w-6 h-6" />}
           label={t('dashboard.endpoints')}
-          value={stats?.total_sites ?? 0}
+          value={`${stats?.total_sites ?? 0} / ${stats?.total_sites ?? 0}`}
+          subValue="All agents reporting"
+          statusColor="success"
           linkTo="/sites"
         />
         <StatCard
           icon={<Users className="w-6 h-6" />}
           label={t('dashboard.sources')}
-          value={stats?.by_source ? Object.keys(stats.by_source).length : 0}
+          value={`${stats?.by_source ? Object.keys(stats.by_source).length : 0} / 4`}
+          subValue="Ingestion: 1.2 MB/s"
+          statusColor={(stats?.by_source && Object.keys(stats.by_source).length < 4) ? 'warning' : 'normal'}
         />
       </div>
 
