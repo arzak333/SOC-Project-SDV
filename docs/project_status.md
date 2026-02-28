@@ -137,6 +137,32 @@ The alert engine is now a **full correlation engine**:
 - [x] **Locale-aware formatting** — Dates/numbers formatted with `locale()` helper (`en-US` / `fr-FR`)
 - [x] **localStorage persistence** — Language preference survives page refresh
 
+---
+
+## Current Milestone: Version 1.7 — Dashboard V3 & Suricata IDS — COMPLETED
+
+### Completed ✓
+
+#### Suricata IDS (4th event source)
+- [x] **Suricata container** — Ubuntu 22.04 + Suricata (OISF PPA) + Wazuh agent 4.14.2 on `dmz-net`
+- [x] **EVE JSON generator** — Realistic Suricata alerts (ET OPEN signatures), DNS, HTTP, TLS events
+- [x] **Wazuh integration** — `log_format: json` on `/var/log/suricata/eve.json`; custom rules 100200-100202
+- [x] **Frontend** — Source `ids` mapped to purple `#8b5cf6`, displayed as `IDS / Suricata`
+- [x] **Events filter** — Fake sources removed; now shows only 4 real sources (Firewall, IDS, Endpoint, Application)
+
+#### ActivityHeatmap V3
+- [x] **Date-based grid** — Real calendar dates for last 7 or 30 days × 24 hours (replaces day-of-week aggregation)
+- [x] **Severity breakdown** — Critical / High / Med-Low counts in hover tooltip per cell
+- [x] **7d / 30d toggle** — Switch view; backend `GET /api/dashboard/heatmap?days=N` (default 30)
+- [x] **Click-to-filter** — Click a cell to filter Recent Alerts to that time slice
+- [x] **Full i18n** — All labels translated via `t()` with `heatmap.*` keys (EN + FR)
+- [x] **Light theme** — Added CSS overrides for opacity variants (`bg-slate-900/50`, `bg-slate-800/40|50|60`, `border-slate-800/80`)
+
+#### StatCard Mission Critical Redesign
+- [x] **Sparkline SVG** — Trend sparkline rendered behind value at 20% opacity (`sparklineData?: number[]` prop)
+- [x] **statusColor** — `normal | success | warning | critical` drives icon color, card tint, border hover
+- [x] **subValue** — Secondary metric line below main value
+
 ### In Progress 🚧
 None
 
@@ -159,3 +185,4 @@ None
 - 2026-02-26: **V1.4 COMPLETED** — Dashboard analytics: trend indicators (% change), severity trend chart, activity heatmap, top source IPs widget, quick actions (table + modal), degraded endpoint tooltips, live feed animation, interactive donut chart.
 - 2026-02-26: **V1.5 COMPLETED** — SOC analyst UX: language consistency (full English), trend color fix, alert grouping, FP quick action, IP OSINT actions (Whois/VT/Block), playbook integration on alerts.
 - 2026-02-27: **V1.6 COMPLETED** — Internationalization: EN/FR language toggle in header, LanguageContext provider, translations dictionary (~150 keys), full component coverage, locale-aware formatting, localStorage persistence.
+- 2026-02-28: **V1.7 COMPLETED** — Suricata IDS as 4th event source, ActivityHeatmap V3 (date-based grid, severity breakdown, click-to-filter, 7d/30d toggle), StatCard Mission Critical redesign (sparklines, statusColor, subValue), Events filter cleanup, light theme opacity variant fixes. Branch `fill-spaceV3` merged into master.

@@ -36,13 +36,15 @@ Une alerte détectée par Wazuh est ingérée par le SOC, matchée par une règl
 
 ### Autres Fonctionnalités
 
-- **Dashboard temps réel** avec WebSocket, KPI par sévérité, indicateurs de tendance (% vs J-1)
-- **Analytics avancés** : heatmap d'activité, top source IPs avec actions OSINT (Whois, VirusTotal, Block), severity trend chart, donut interactif
+- **Dashboard temps réel** avec WebSocket, KPI par sévérité, indicateurs de tendance (% vs J-1), sparklines
+- **Analytics avancés** : heatmap d'activité V3 (calendrier réel, sévérité par cellule, click-to-filter), top source IPs avec actions OSINT (Whois, VirusTotal, Block), severity trend chart, donut interactif
+- **4 sources d'événements** : Firewall, Endpoints, GLPI (application), Suricata IDS
 - **Gestion des événements** avec filtres, recherche, assignation, groupement d'alertes, marquage faux positif rapide
 - **Authentification JWT** avec rôles (admin, analyst, supervisor)
+- **Interface bilingue** : toggle EN/FR en un clic, persisté en localStorage
 - **Export** CSV, PDF, JSON
 - **Playbooks** avec exécution étape par étape et intégration directe depuis les alertes
-- **Infrastructure simulée** : Wazuh SIEM + endpoints + firewall + GLPI
+- **Infrastructure simulée** : Wazuh SIEM + endpoints + firewall + Suricata IDS + GLPI
 
 ## Stack Technique
 
@@ -125,6 +127,8 @@ python3 scripts/log_generator.py --backfill --days 30 --count 2000  # Historique
 - [x] Playbooks / procédures
 - [x] Moteur de corrélation et gestion des Incidents (v1.2)
 - [x] Dashboard analytics avancés (v1.4)
+- [x] Interface bilingue EN/FR (v1.6)
+- [x] ActivityHeatmap V3 + StatCard Mission Critical + Suricata IDS (v1.7)
 - [x] Rapport technique complet
 - [ ] Guide de déploiement & d'utilisation
 - [ ] Vidéo de démonstration

@@ -179,6 +179,15 @@ Separate Docker Compose stack in `infrastructure/` simulating the client network
 - Log generator writes realistic `IPTables-Dropped` / `HTTP-Access` syslog entries
 - Logs collected by Wazuh → forwarded to SOC
 
+### Suricata IDS Container
+- Ubuntu 22.04 + Suricata (OISF PPA) + Wazuh agent 4.14.2
+- Network: `dmz-net` only — monitors external-facing traffic
+- EVE JSON log generator produces realistic Suricata alerts (ET OPEN signatures), DNS, HTTP, TLS events
+- Wazuh integration: `log_format: json` for `/var/log/suricata/eve.json`; built-in rules 86xxx decode EVE format
+- Custom rules 100200-100202 in `local_rules.xml` for severity escalation
+- Source ID: `ids` (purple `#8b5cf6`) — displayed as `IDS / Suricata` in frontend
+- Caps: `NET_RAW`, `SYS_NICE`
+
 ### GLPI (IT Asset Management)
 - `diouxx/glpi` + MariaDB backend
 - Pre-populated with 2 computers (endpoint-pc-01, endpoint-pc-02)
@@ -189,6 +198,7 @@ Separate Docker Compose stack in `infrastructure/` simulating the client network
 [dmz-net 172.25.0.0/24]
         │
   [firewall-gw]  ← iptables NAT + Wazuh agent
+  [suricata-ids] ← EVE JSON + Wazuh agent
         │
 [infra-net]
    ├── endpoint-pc-01 → Wazuh agent
@@ -197,6 +207,8 @@ Separate Docker Compose stack in `infrastructure/` simulating the client network
    └── wazuh-manager → wazuh-indexer → wazuh-dashboard
                     └──→ SOC /api/ingest (via soc-network)
 ```
+
+**Active event sources**: `firewall`, `endpoint`, `application` (GLPI), `ids` (Suricata) — 4 total
 
 ---
 
@@ -362,9 +374,37 @@ All dashboard-facing components use `t()` for user-visible strings:
 
 ---
 
+## Dashboard V3 Redesign (v1.7)
+
+### Activity Heatmap V3
+- **Date-based grid**: real calendar dates (not day-of-week aggregation) — last 7 or 30 days × 24 hours
+- **Severity breakdown per cell**: Critical / High / Med-Low counts shown in hover tooltip
+- **7d / 30d toggle**: switch between weekly and monthly view; backend `GET /api/dashboard/heatmap?days=N`
+- **Click-to-filter time slice**: click any cell to filter Recent Alerts table to that hour
+- **Column crosshair guide** and selected-cell animation for clarity
+- All labels fully translated (EN/FR) via `t()` — keys under `heatmap.*` namespace
+- Backend `HeatmapEntry` now returns `{ date, hour, count, critical, high, medium, low }`
+
+### StatCard Mission Critical Redesign
+- **Sparkline SVG** rendered behind value at 20% opacity — `sparklineData?: number[]` prop
+- **statusColor** prop (`normal | success | warning | critical`) — drives icon bg/border color and card tint
+- **subValue** prop — secondary metric line below main value (replaces trend indicator slot when set)
+- Backward-compatible: existing cards without new props remain unchanged
+
+### Events Filter Cleanup
+- Removed 3 fake sources from Events page filter dropdown: Network, Email, Active Directory
+- Dropdown now shows only real sources: All Sources, Firewall, IDS, Endpoint, Application
+
+### Light Theme Fixes
+- Added CSS overrides for Tailwind opacity variants used by ActivityHeatmap V3:
+  `bg-slate-900/50`, `bg-slate-800/60`, `bg-slate-800/50`, `bg-slate-800/40`, `border-slate-800/80`
+- Pattern: `[data-theme="light"] .bg-slate-900\/50 { ... }` (escaped backslash in CSS selector)
+
+---
+
 ## Planned Features (Roadmap)
 
-### v1.6 (Planned)
+### v1.8 (Planned)
 - [ ] Email notifications (SMTP integration)
 - [ ] Webhook notifications
 - [ ] Geolocation map for source IPs
@@ -387,3 +427,4 @@ All dashboard-facing components use `t()` for user-visible strings:
 | v1.4 | 2026-02 | Dashboard analytics: trend indicators, severity trend chart, activity heatmap, top source IPs, quick actions, live feed animation |
 | v1.5 | 2026-02 | SOC analyst UX: language consistency, trend color fix, alert grouping, FP quick action, IP OSINT actions, playbook integration |
 | v1.6 | 2026-02 | Internationalization: EN/FR language toggle with full translation coverage |
+| v1.7 | 2026-02 | Suricata IDS (4th source), ActivityHeatmap V3 (date-based, severity breakdown, click-to-filter), StatCard Mission Critical (sparklines, statusColor), light theme opacity fixes |
