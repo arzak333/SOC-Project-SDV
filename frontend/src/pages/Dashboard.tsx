@@ -287,7 +287,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
         <StatCard
           icon={<Monitor className="w-6 h-6" />}
           label={t('dashboard.endpoints')}
-          value={`${stats?.total_sites ?? 0} / ${stats?.total_sites ?? 0}`}
+          value={stats?.total_sites ?? 0}
           subValue="All agents reporting"
           statusColor="success"
           linkTo="/sites"

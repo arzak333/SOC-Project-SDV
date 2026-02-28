@@ -31,7 +31,7 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
   if (loading) {
     return (
       <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col gap-4">
-        <h2 className="text-lg font-bold text-slate-100 mb-2">{t('heatmap.title') || 'Security Event Distribution'}</h2>
+        <h2 className="text-lg font-bold text-slate-100 mb-2">{t('heatmap.title')}</h2>
         <div className="animate-pulse bg-slate-800/50 rounded-xl h-64 w-full"></div>
       </div>
     )
@@ -86,10 +86,10 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
       <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-            Security Event Distribution ({days} Days)
+            {t('heatmap.title')} ({days} {t('heatmap.days')})
           </h2>
           <p className="text-slate-400 text-xs mt-1">
-            Hourly event density mapped across host, network, and application logs.
+            {t('heatmap.subtitle')}
           </p>
         </div>
         
@@ -103,7 +103,7 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
                 days === 7 ? "bg-slate-600 text-white" : "text-slate-400 hover:text-slate-200"
               )}
             >
-              Last 7 Days
+              {t('heatmap.last7days')}
             </button>
             <button
               onClick={() => onTimeRangeChange?.(30)}
@@ -112,17 +112,17 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
                 days === 30 ? "bg-slate-600 text-white" : "text-slate-400 hover:text-slate-200"
               )}
             >
-              Last 30 Days
+              {t('heatmap.last30days')}
             </button>
           </div>
 
           {/* Legend */}
           <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
-            <span>Low</span>
+            <span>{t('heatmap.low')}</span>
             {['bg-slate-800/40 border border-slate-700/50', 'bg-blue-900/80 border border-blue-800/50', 'bg-blue-700/80 border border-blue-600/50', 'bg-blue-500/90 border border-blue-400/50', 'bg-orange-500/90 border border-orange-400/50', 'bg-red-500/90 border border-red-400/50'].map((c) => (
               <div key={c} className={`w-3 h-3 rounded-[1px] ${c}`} />
             ))}
-            <span>High</span>
+            <span>{t('heatmap.high')}</span>
           </div>
         </div>
       </div>
@@ -185,17 +185,17 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
                       <div className="font-semibold text-white mb-1">{label} {h}:00 - {h+1}:00</div>
                       {count > 0 ? (
                         <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                          <div className="text-slate-400">Total:</div>
+                          <div className="text-slate-400">{t('heatmap.total')}:</div>
                           <div className="font-medium">{count}</div>
-                          <div className="text-red-400">Critical:</div>
+                          <div className="text-red-400">{t('heatmap.critical')}:</div>
                           <div className="font-medium text-red-400">{entry?.critical || 0}</div>
-                          <div className="text-orange-400">High:</div>
+                          <div className="text-orange-400">{t('heatmap.high')}:</div>
                           <div className="font-medium text-orange-400">{entry?.high || 0}</div>
-                          <div className="text-blue-400">Med/Low:</div>
+                          <div className="text-blue-400">{t('heatmap.medLow')}:</div>
                           <div className="font-medium text-blue-400">{(entry?.medium || 0) + (entry?.low || 0)}</div>
                         </div>
                       ) : (
-                        <div className="text-slate-400">No events</div>
+                        <div className="text-slate-400">{t('heatmap.noEvents')}</div>
                       )}
                     </div>
                   </div>
@@ -221,16 +221,16 @@ export default function ActivityHeatmap({ data, loading, days = 30, onTimeRangeC
       {selectedCell && (
         <div className="mt-4 flex items-center justify-between text-xs bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-4 py-2 rounded-lg animate-in fade-in slide-in-from-top-2">
           <span>
-            Filtering events for: <strong className="text-white">{selectedCell.date} at {selectedCell.hour}:00</strong>
+            {t('heatmap.filteringFor')} <strong className="text-white">{selectedCell.date} at {selectedCell.hour}:00</strong>
           </span>
-          <button 
+          <button
             onClick={() => {
               setSelectedCell(null)
               onTimeSliceSelect?.('', '')
             }}
             className="hover:text-white transition-colors underline decoration-indigo-500/50 underline-offset-2"
           >
-            Clear Filter
+            {t('heatmap.clearFilter')}
           </button>
         </div>
       )}
