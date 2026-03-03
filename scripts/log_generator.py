@@ -14,8 +14,20 @@ from typing import Optional
 # Configuration
 API_URL = "http://localhost:5000/api/ingest"
 
-# Sites — matches real infrastructure instances
-SITES = ["endpoint-pc-01", "endpoint-pc-02", "firewall-gw", "glpi-crm", "suricata-ids"]
+# Sites — 30 French audio centers (matches GLPI/dashboard configuration)
+SITES = [
+    "AUDIO_Paris_Bastille", "AUDIO_Paris_Opera", "AUDIO_Paris_Marais",
+    "AUDIO_Paris_Montparnasse", "AUDIO_Paris_Nation", "AUDIO_Paris_Republique",
+    "AUDIO_Versailles", "AUDIO_Boulogne", "AUDIO_Nanterre",
+    "AUDIO_SaintDenis", "AUDIO_Creteil", "AUDIO_Argenteuil", "AUDIO_Montreuil",
+    "AUDIO_Lyon_PartDieu", "AUDIO_Lyon_Confluence",
+    "AUDIO_Marseille_VieuxPort", "AUDIO_Marseille_Castellane",
+    "AUDIO_Toulouse_Capitole", "AUDIO_Toulouse_Blagnac",
+    "AUDIO_Bordeaux_Meriadeck", "AUDIO_Bordeaux_Chartrons",
+    "AUDIO_Nice", "AUDIO_Strasbourg", "AUDIO_Nantes",
+    "AUDIO_Montpellier", "AUDIO_Lille", "AUDIO_Rennes",
+    "AUDIO_Grenoble", "AUDIO_Toulon", "AUDIO_Clermont",
+]
 
 # Event templates by source — only real infrastructure sources
 EVENT_TEMPLATES = {
