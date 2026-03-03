@@ -6,7 +6,8 @@ if [ -n "$WAZUH_MANAGER" ]; then
     sed -i "s/MANAGER_IP/$WAZUH_MANAGER/" /var/ossec/etc/ossec.conf
 fi
 
-# Start rsyslog for system logging
+# Start rsyslog for system logging (clean up stale PID file from previous run)
+rm -f /run/rsyslogd.pid
 rsyslogd
 
 # Start Wazuh agent

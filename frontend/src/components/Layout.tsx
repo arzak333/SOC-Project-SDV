@@ -110,7 +110,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* TopBar */}
         <TopBar
           systemStatus={connected ? 'online' : 'offline'}
-          monitoringCount={32}
+          monitoringCount={30}
           alertCount={alerts.length}
         />
 
