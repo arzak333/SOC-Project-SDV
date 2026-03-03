@@ -23,7 +23,7 @@ const roles: { value: JwtRole; label: string }[] = [
 
 export default function TopBar({
     systemStatus = 'online',
-    monitoringCount = 32,
+    monitoringCount = 30,
     alertCount = 0,
 }: TopBarProps) {
     const { theme, toggleTheme } = useTheme()

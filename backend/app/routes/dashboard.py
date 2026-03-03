@@ -320,12 +320,18 @@ def get_top_ips():
 @dashboard_bp.route("/dashboard/sites", methods=["GET"])
 def get_sites_summary():
     """Get summary by site (for multi-site audioprothésistes network)."""
-    # Events by site with severity breakdown
+    last_24h = datetime.utcnow() - timedelta(hours=24)
+
+    # Only unresolved events in the last 24h — used to derive endpoint status
     site_stats = (
         db.session.query(
             Event.site_id, Event.severity, func.count(Event.id).label("count")
         )
-        .filter(Event.site_id.isnot(None))
+        .filter(
+            Event.site_id.isnot(None),
+            Event.timestamp >= last_24h,
+            Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
+        )
         .group_by(Event.site_id, Event.severity)
         .all()
     )
