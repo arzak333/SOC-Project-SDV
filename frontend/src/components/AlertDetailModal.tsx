@@ -21,6 +21,7 @@ import { SecurityEvent, Severity, EventStatus, AlertComment, Analyst, TimelineEv
 import { fetchEvent, updateEventStatus, fetchEventComments, addEventComment, fetchAnalysts, fetchPlaybooks, executePlaybook } from '../api'
 import { useRole } from '../context/RoleContext'
 import { useLanguage } from '../context/LanguageContext'
+import { useNotification } from '../context/NotificationContext'
 
 interface AlertDetailModalProps {
   eventId: string | null
@@ -85,6 +86,7 @@ export default function AlertDetailModal({
 }: AlertDetailModalProps) {
   const { canAssign } = useRole()
   const { t, locale } = useLanguage()
+  const { addPlaybookNotification } = useNotification()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [event, setEvent] = useState<SecurityEvent | null>(null)
   const [loading, setLoading] = useState(true)
@@ -637,6 +639,7 @@ export default function AlertDetailModal({
                                           startedBy: 'Current User',
                                         })
                                         toast.success(`Playbook "${pb.name}" launched`)
+                                        addPlaybookNotification(pb.name)
                                         setShowPlaybookPicker(false)
                                         setActionStates((prev) => ({ ...prev, playbook: 'done' }))
                                         setTimeline((prev) => [

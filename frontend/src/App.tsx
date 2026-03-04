@@ -13,6 +13,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { RoleProvider } from './context/RoleContext'
 import { LanguageProvider } from './context/LanguageContext'
+import { NotificationProvider } from './context/NotificationContext'
 import { SecurityEvent } from './types'
 
 // Protected Route wrapper
@@ -49,6 +50,7 @@ function AppRoutes() {
                 setRealtimeEvents((prev) => [event, ...prev].slice(0, 100))
               }}
             >
+              <NotificationProvider>
               <Layout>
                 <Routes>
                   <Route path="/" element={<Dashboard realtimeEvents={realtimeEvents} />} />
@@ -59,6 +61,7 @@ function AppRoutes() {
                   <Route path="/playbooks" element={<Playbooks />} />
                 </Routes>
               </Layout>
+              </NotificationProvider>
             </SocketProvider>
           </ProtectedRoute>
         }

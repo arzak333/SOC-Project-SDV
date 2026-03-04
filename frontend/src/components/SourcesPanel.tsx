@@ -92,7 +92,7 @@ function SourceCard({ source, detail }: { source: string; detail: SourceDetail }
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="flex items-center gap-1.5 text-slate-400">
           <Clock className="w-3 h-3 shrink-0" />
-          <span>{t('sources.lastSignal')}: <span className="text-slate-200">{relativeTime(detail.last_event_at, t)}</span></span>
+          <span>{t('sources.lastSignal')}: <span className="text-white font-medium">{relativeTime(detail.last_event_at, t)}</span></span>
         </div>
         <div className="flex items-center gap-1.5 text-slate-400">
           <Zap className="w-3 h-3 shrink-0" />
@@ -106,7 +106,7 @@ function SourceCard({ source, detail }: { source: string; detail: SourceDetail }
           <Server className="w-3 h-3 shrink-0" />
           <span className="truncate">{specificMeta()}</span>
         </div>
-        <span className="text-slate-500 shrink-0 ml-2">{detail.events_24h.toLocaleString()} {t('sources.events24h')}</span>
+        <span className="text-white font-medium shrink-0 ml-2">{detail.events_24h.toLocaleString()} {t('sources.events24h')}</span>
       </div>
     </div>
   )
