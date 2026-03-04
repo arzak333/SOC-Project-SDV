@@ -15,8 +15,8 @@ def list_events():
     per_page = limit if limit else request.args.get('per_page', 50, type=int)
     per_page = min(per_page, 500)  # Max 500 per page
 
-    # Build query
-    query = Event.query
+    # Build query — always exclude keepalive heartbeats from event views
+    query = Event.query.filter(Event.event_type != 'keepalive')
 
     # Filters - support comma-separated values for multiple selection
     if status := request.args.get('status'):

@@ -391,6 +391,19 @@ All dashboard-facing components use `t()` for user-visible strings:
 - **subValue** prop — secondary metric line below main value (replaces trend indicator slot when set)
 - Backward-compatible: existing cards without new props remain unchanged
 
+### Sources Health Panel
+- Click the **Sources** stat card to open a right-side drawer showing real-time health per event source
+- Each source card shows: ACTIVE / DISCONNECTED badge, last signal time, EPS (events/60s), 24h event count, and source-specific metadata
+- **ACTIVE/DISCONNECTED logic**: primarily driven by `event_type="keepalive"` heartbeat events (< 10 min ago = ACTIVE); GLPI uses real-time HTTP check against the GLPI API on each request
+- Sources order: Firewall → Endpoint → IDS / Suricata → Application (GLPI)
+- Source-specific metadata: Firewall shows host label; Endpoint shows active agent count; IDS shows last rule signature; Application shows GLPI connected/timeout status
+
+### Heartbeat-Based Health Monitoring
+- Each log generator (`endpoints`, `firewall`, `suricata`) POSTs `event_type="keepalive"` to `/api/ingest` every 5 minutes via a background thread
+- GLPI health is determined by a real-time HTTP request from the backend to `glpi-crm/apirest.php/initSession` (HTTP 401 = up, exception = down)
+- Heartbeats are stored in the events table but excluded from all dashboard stats, charts, heatmap, realtime WebSocket feed, and endpoint metrics — they are pipeline health signals only
+- `GET /api/dashboard/source-details` returns `last_keepalive_at` (ISO string + `Z` suffix) per source alongside security event stats
+
 ### Events Filter Cleanup
 - Removed 3 fake sources from Events page filter dropdown: Network, Email, Active Directory
 - Dropdown now shows only real sources: All Sources, Firewall, IDS, Endpoint, Application
@@ -427,4 +440,4 @@ All dashboard-facing components use `t()` for user-visible strings:
 | v1.4 | 2026-02 | Dashboard analytics: trend indicators, severity trend chart, activity heatmap, top source IPs, quick actions, live feed animation |
 | v1.5 | 2026-02 | SOC analyst UX: language consistency, trend color fix, alert grouping, FP quick action, IP OSINT actions, playbook integration |
 | v1.6 | 2026-02 | Internationalization: EN/FR language toggle with full translation coverage |
-| v1.7 | 2026-02 | Suricata IDS (4th source), ActivityHeatmap V3 (date-based, severity breakdown, click-to-filter), StatCard Mission Critical (sparklines, statusColor), light theme opacity fixes |
+| v1.7 | 2026-02 | Suricata IDS (4th source), ActivityHeatmap V3 (date-based, severity breakdown, click-to-filter), StatCard Mission Critical (sparklines, statusColor), light theme opacity fixes, Sources Health Panel, heartbeat-based health monitoring |

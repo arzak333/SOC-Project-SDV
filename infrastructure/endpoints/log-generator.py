@@ -9,10 +9,13 @@ import time
 import random
 import subprocess
 import logging
+import threading
+import requests
 from datetime import datetime
 
 SITE_ID = os.environ.get('SITE_ID', 'AUDIO_001')
 ENDPOINT = os.environ.get('ENDPOINT_NAME', 'endpoint-01')
+BACKEND_URL = os.environ.get('BACKEND_URL', 'http://soc-backend:5000')
 
 # Simulated users
 USERS = ['audioprothesiste', 'receptionist', 'admin_center', 'root']
@@ -139,9 +142,27 @@ def simulate_brute_force():
         time.sleep(random.uniform(0.5, 2))
 
 
+def _heartbeat():
+    """Send a keepalive to the SOC backend every 5 minutes."""
+    while True:
+        time.sleep(300)
+        try:
+            requests.post(f"{BACKEND_URL}/api/ingest", json={
+                "source": "endpoint",
+                "event_type": "keepalive",
+                "severity": "low",
+                "description": f"Agent keepalive from {ENDPOINT}",
+                "site_id": SITE_ID,
+                "metadata": {}
+            }, timeout=5)
+        except Exception:
+            pass
+
+
 def main():
     """Main loop - generate events at random intervals."""
     logger.info(f"Starting log generator for {ENDPOINT} ({SITE_ID})")
+    threading.Thread(target=_heartbeat, daemon=True).start()
 
     # Event weights (probability)
     events = [

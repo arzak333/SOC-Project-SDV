@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     software-properties-common \
     rsyslog \
     python3 \
+    python3-requests \
     iproute2 \
     && rm -rf /var/lib/apt/lists/*
 

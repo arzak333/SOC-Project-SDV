@@ -10,8 +10,12 @@ import time
 import random
 import datetime
 import os
+import threading
+import requests
 
 LOG_FILE = "/var/log/suricata/eve.json"
+BACKEND_URL = os.environ.get('BACKEND_URL', 'http://soc-backend:5000')
+SITE_ID     = os.environ.get('SITE_ID', 'suricata-1')
 
 # Simulated external attacker IPs
 EXTERNAL_IPS = [
@@ -266,8 +270,26 @@ def write_eve(entry):
     print(json.dumps({"event_type": entry["event_type"], "src_ip": entry["src_ip"]}), flush=True)
 
 
+def _heartbeat():
+    """Send a keepalive to the SOC backend every 5 minutes."""
+    while True:
+        time.sleep(300)
+        try:
+            requests.post(f"{BACKEND_URL}/api/ingest", json={
+                "source": "ids",
+                "event_type": "keepalive",
+                "severity": "low",
+                "description": f"Agent keepalive from {SITE_ID}",
+                "site_id": SITE_ID,
+                "metadata": {}
+            }, timeout=5)
+        except Exception:
+            pass
+
+
 def main():
     print(f"[eve-generator] Writing Suricata EVE JSON to {LOG_FILE}", flush=True)
+    threading.Thread(target=_heartbeat, daemon=True).start()
 
     # Event generators weighted: alerts most common (Wazuh cares about these),
     # then HTTP, DNS, TLS for realism

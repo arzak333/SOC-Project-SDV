@@ -39,6 +39,15 @@ export interface AlertRule {
   trigger_count: number
 }
 
+export interface SourceDetail {
+  last_event_at: string | null
+  last_keepalive_at: string | null
+  events_last_60s: number
+  events_24h: number
+  top_event_type: string | null
+  active_sites: number
+}
+
 export interface DashboardStats {
   total_events: number
   events_last_24h: number

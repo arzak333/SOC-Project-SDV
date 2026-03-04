@@ -36,6 +36,26 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.sources': 'Sources',
     'dashboard.fromYesterday': 'from yesterday',
 
+    // Sources Panel
+    'sources.title': 'Collection Sources',
+    'sources.subtitle': 'Live ingestion pipeline status',
+    'sources.active': 'ACTIVE',
+    'sources.disconnected': 'DISCONNECTED',
+    'sources.lastSignal': 'Last signal',
+    'sources.eps': 'EPS',
+    'sources.events24h': 'events (24h)',
+    'sources.host': 'Host',
+    'sources.agents': 'agents',
+    'sources.lastRule': 'Last rule',
+    'sources.glpiStatus': 'GLPI',
+    'sources.connected': 'Connected',
+    'sources.timeout': 'Timeout',
+    'sources.noData': 'No data',
+    'sources.justNow': 'just now',
+    'sources.secAgo': 's ago',
+    'sources.minAgo': 'm ago',
+    'sources.hrAgo': 'h ago',
+
     // Event Volume Chart
     'eventVolume.title': 'Event Volume (Ingestion)',
     'eventVolume.events': 'events',
@@ -217,6 +237,26 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.endpoints': 'Endpoints',
     'dashboard.sources': 'Sources',
     'dashboard.fromYesterday': 'vs hier',
+
+    // Sources Panel
+    'sources.title': 'Sources de collecte',
+    'sources.subtitle': 'État des pipelines d\'ingestion',
+    'sources.active': 'ACTIF',
+    'sources.disconnected': 'DÉCONNECTÉ',
+    'sources.lastSignal': 'Dernier signal',
+    'sources.eps': 'EPS',
+    'sources.events24h': 'événements (24h)',
+    'sources.host': 'Hôte',
+    'sources.agents': 'agents',
+    'sources.lastRule': 'Dernière règle',
+    'sources.glpiStatus': 'GLPI',
+    'sources.connected': 'Connecté',
+    'sources.timeout': 'Timeout',
+    'sources.noData': 'Aucune donnée',
+    'sources.justNow': 'à l\'instant',
+    'sources.secAgo': 's',
+    'sources.minAgo': 'min',
+    'sources.hrAgo': 'h',
 
     // Event Volume Chart
     'eventVolume.title': 'Volume d\'événements (Ingestion)',

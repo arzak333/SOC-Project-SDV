@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     rsyslog \
     python3 \
+    python3-requests \
     && rm -rf /var/lib/apt/lists/*
 
 # Disable imklog: containers can't read /proc/kmsg without SYS_ADMIN

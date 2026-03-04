@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import func, case
 from datetime import datetime, timedelta
+import os
+import requests as http_requests
 from app import db
 from app.models import (
     Event,
@@ -22,20 +24,23 @@ def get_stats():
     last_24h = now - timedelta(hours=24)
     last_7d = now - timedelta(days=7)
 
+    # Base filter: exclude keepalive heartbeats from all stats
+    security_events = Event.query.filter(Event.event_type != 'keepalive')
+
     # Total events
-    total_events = Event.query.count()
+    total_events = security_events.count()
 
     # Events in last 24h
-    events_24h = Event.query.filter(Event.timestamp >= last_24h).count()
+    events_24h = security_events.filter(Event.timestamp >= last_24h).count()
 
     # Events in previous 24h (for trend comparison)
     prev_24h_start = last_24h - timedelta(hours=24)
-    events_prev_24h = Event.query.filter(
+    events_prev_24h = security_events.filter(
         Event.timestamp >= prev_24h_start, Event.timestamp < last_24h
     ).count()
 
     # Critical open in previous 24h (for trend comparison)
-    critical_prev_24h = Event.query.filter(
+    critical_prev_24h = security_events.filter(
         Event.severity == EventSeverity.CRITICAL,
         Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
         Event.created_at >= prev_24h_start,
@@ -45,6 +50,7 @@ def get_stats():
     # Events by status
     status_counts = dict(
         db.session.query(Event.status, func.count(Event.id))
+        .filter(Event.event_type != 'keepalive')
         .group_by(Event.status)
         .all()
     )
@@ -52,31 +58,35 @@ def get_stats():
     # Events by severity
     severity_counts = dict(
         db.session.query(Event.severity, func.count(Event.id))
+        .filter(Event.event_type != 'keepalive')
         .group_by(Event.severity)
         .all()
     )
 
     # Critical events not resolved
-    critical_open = Event.query.filter(
+    critical_open = security_events.filter(
         Event.severity == EventSeverity.CRITICAL,
         Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
     ).count()
 
     # All unresolved events (any severity)
-    active_alerts = Event.query.filter(
+    active_alerts = security_events.filter(
         Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING])
     ).count()
 
     # Events by source
     source_counts = dict(
         db.session.query(Event.source, func.count(Event.id))
+        .filter(Event.event_type != 'keepalive')
         .group_by(Event.source)
         .all()
     )
 
     # Unique sites
     total_sites = (
-        db.session.query(func.count(func.distinct(Event.site_id))).scalar() or 0
+        db.session.query(func.count(func.distinct(Event.site_id)))
+        .filter(Event.event_type != 'keepalive')
+        .scalar() or 0
     )
 
     # Total alert rule triggers (sum of trigger_count across all rules)
@@ -162,7 +172,7 @@ def get_trends():
             db.session.query(
                 time_bucket.label("time_bucket"), func.count(Event.id).label("count")
             )
-            .filter(Event.timestamp >= start_time)
+            .filter(Event.timestamp >= start_time, Event.event_type != 'keepalive')
             .group_by(time_bucket)
             .order_by(time_bucket)
             .all()
@@ -174,7 +184,7 @@ def get_trends():
                 func.date_trunc(trunc_unit, Event.timestamp).label("time_bucket"),
                 func.count(Event.id).label("count"),
             )
-            .filter(Event.timestamp >= start_time)
+            .filter(Event.timestamp >= start_time, Event.event_type != 'keepalive')
             .group_by("time_bucket")
             .order_by("time_bucket")
             .all()
@@ -199,7 +209,7 @@ def get_trends():
                 Event.severity,
                 func.count(Event.id).label("count"),
             )
-            .filter(Event.timestamp >= start_time)
+            .filter(Event.timestamp >= start_time, Event.event_type != 'keepalive')
             .group_by("day", Event.severity)
             .order_by("day")
             .all()
@@ -251,7 +261,7 @@ def get_heatmap():
                 "low"
             ),
         )
-        .filter(Event.timestamp >= since)
+        .filter(Event.timestamp >= since, Event.event_type != 'keepalive')
         .group_by("date", "hour")
         .all()
     )
@@ -292,6 +302,7 @@ def get_top_ips():
         )
         .filter(
             Event.timestamp >= since,
+            Event.event_type != 'keepalive',
             ip_field.isnot(None),
             ip_field != "null",
             ip_field != "",
@@ -317,6 +328,94 @@ def get_top_ips():
     )
 
 
+@dashboard_bp.route("/dashboard/source-details", methods=["GET"])
+def get_source_details():
+    """Per-source live stats: last signal, EPS, 24h count, top event type, active sites."""
+    now = datetime.utcnow()
+    last_24h = now - timedelta(hours=24)
+    last_60s = now - timedelta(seconds=60)
+    active_sources = [
+        EventSource.FIREWALL,
+        EventSource.IDS,
+        EventSource.ENDPOINT,
+        EventSource.APPLICATION,
+    ]
+
+    # GLPI reachability check (done once, used for application source)
+    glpi_alive = False
+    try:
+        glpi_url = os.environ.get("GLPI_URL", "http://glpi-crm/apirest.php")
+        app_token = os.environ.get("GLPI_APP_TOKEN", "")
+        resp = http_requests.get(
+            f"{glpi_url}/initSession",
+            headers={"App-Token": app_token},
+            timeout=3,
+        )
+        glpi_alive = resp.status_code < 500  # 401 = auth needed but GLPI is up
+    except Exception:
+        glpi_alive = False
+
+    result = {}
+    for src in active_sources:
+        # Last security event timestamp (keepalives excluded)
+        last_row = (
+            db.session.query(func.max(Event.timestamp))
+            .filter(Event.source == src, Event.event_type != 'keepalive')
+            .scalar()
+        )
+        # Last keepalive timestamp
+        keepalive_row = (
+            db.session.query(func.max(Event.timestamp))
+            .filter(Event.source == src, Event.event_type == 'keepalive')
+            .scalar()
+        )
+        # For GLPI: override keepalive with real-time HTTP check
+        if src == EventSource.APPLICATION:
+            keepalive_row = now if glpi_alive else None
+
+        # Security events in last 60s (keepalives excluded)
+        eps_count = (
+            db.session.query(func.count(Event.id))
+            .filter(Event.source == src, Event.timestamp >= last_60s, Event.event_type != 'keepalive')
+            .scalar()
+            or 0
+        )
+        # Security events in last 24h (keepalives excluded)
+        count_24h = (
+            db.session.query(func.count(Event.id))
+            .filter(Event.source == src, Event.timestamp >= last_24h, Event.event_type != 'keepalive')
+            .scalar()
+            or 0
+        )
+        # Most common security event_type in last 24h (keepalives excluded)
+        top_type_row = (
+            db.session.query(Event.event_type, func.count(Event.id).label("n"))
+            .filter(Event.source == src, Event.timestamp >= last_24h, Event.event_type != 'keepalive')
+            .group_by(Event.event_type)
+            .order_by(func.count(Event.id).desc())
+            .first()
+        )
+        top_event_type = top_type_row[0] if top_type_row else None
+        # Active sites (distinct) in last 24h (keepalives excluded)
+        active_sites = (
+            db.session.query(func.count(func.distinct(Event.site_id)))
+            .filter(Event.source == src, Event.timestamp >= last_24h, Event.event_type != 'keepalive')
+            .scalar()
+            or 0
+        )
+
+        result[src.value] = {
+            "last_event_at": (last_row.isoformat() + 'Z') if last_row else None,
+            "last_keepalive_at": (keepalive_row.isoformat() + 'Z') if keepalive_row else None,
+            "events_last_60s": eps_count,
+            "events_24h": count_24h,
+            "top_event_type": top_event_type,
+            "active_sites": active_sites,
+        }
+
+    return jsonify({"sources": result})
+
+
 @dashboard_bp.route("/dashboard/sites", methods=["GET"])
 def get_sites_summary():
     """Get summary by site (for multi-site audioprothésistes network)."""
@@ -330,6 +429,7 @@ def get_sites_summary():
         .filter(
             Event.site_id.isnot(None),
             Event.timestamp >= last_24h,
+            Event.event_type != 'keepalive',
             Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
         )
         .group_by(Event.site_id, Event.severity)

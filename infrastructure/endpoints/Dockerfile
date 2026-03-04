@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     gnupg2 \
     python3 \
     python3-pip \
+    python3-requests \
     cron \
     rsyslog \
     sudo \

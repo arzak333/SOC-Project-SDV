@@ -18,7 +18,7 @@ def list_endpoints():
     now = datetime.utcnow()
     day_ago = now - timedelta(hours=24)
 
-    # Get distinct site_ids that have events
+    # Get distinct site_ids that have security events (keepalives excluded)
     sites = db.session.query(
         Event.site_id,
         func.count(Event.id).label('total_events'),
@@ -26,21 +26,24 @@ def list_endpoints():
     ).filter(
         Event.site_id.isnot(None),
         Event.site_id != '',
+        Event.event_type != 'keepalive',
     ).group_by(Event.site_id).all()
 
     endpoints = []
     for site_id, total_events, last_seen in sites:
-        # Events in last 24h
+        # Events in last 24h (keepalives excluded)
         events_24h = db.session.query(func.count(Event.id)).filter(
             Event.site_id == site_id,
             Event.timestamp >= day_ago,
+            Event.event_type != 'keepalive',
         ).scalar() or 0
 
-        # Critical/high alerts still open
+        # Critical/high alerts still open (keepalives excluded)
         critical_alerts = db.session.query(func.count(Event.id)).filter(
             Event.site_id == site_id,
             Event.severity.in_([EventSeverity.CRITICAL, EventSeverity.HIGH]),
             Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
+            Event.event_type != 'keepalive',
         ).scalar() or 0
 
         # Derive status from recency
@@ -97,11 +100,15 @@ def get_endpoint(endpoint_id):
 
     now = datetime.utcnow()
     day_ago = now - timedelta(hours=24)
-    last_seen = db.session.query(func.max(Event.timestamp)).filter(Event.site_id == site_id).scalar()
+    last_seen = db.session.query(func.max(Event.timestamp)).filter(
+        Event.site_id == site_id,
+        Event.event_type != 'keepalive',
+    ).scalar()
 
     events_24h = db.session.query(func.count(Event.id)).filter(
         Event.site_id == site_id,
         Event.timestamp >= day_ago,
+        Event.event_type != 'keepalive',
     ).scalar() or 0
 
     if last_seen and (now - last_seen) < timedelta(hours=1):

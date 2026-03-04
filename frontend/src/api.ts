@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident, HeatmapEntry, TopIP } from './types'
+import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident, HeatmapEntry, TopIP, SourceDetail } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -149,6 +149,11 @@ export async function fetchDashboardHeatmap(days?: number): Promise<{ heatmap: H
 
 export async function fetchTopIPs(hours?: number): Promise<{ top_ips: TopIP[] }> {
   const { data } = await api.get('/dashboard/top-ips', { params: hours ? { hours } : {} })
+  return data
+}
+
+export async function fetchSourceDetails(): Promise<{ sources: Record<string, SourceDetail> }> {
+  const { data } = await api.get('/dashboard/source-details')
   return data
 }
 

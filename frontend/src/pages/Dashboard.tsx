@@ -9,6 +9,7 @@ import AlertsBySourceChart from '../components/AlertsBySourceChart'
 import RecentAlertsTable from '../components/RecentAlertsTable'
 import EndpointStatusCard from '../components/EndpointStatusCard'
 import AlertDetailModal from '../components/AlertDetailModal'
+import SourcesPanel from '../components/SourcesPanel'
 import SeverityTrendChart from '../components/SeverityTrendChart'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import TopSourceIPs from '../components/TopSourceIPs'
@@ -54,6 +55,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
 
   const [heatmapDays, setHeatmapDays] = useState(30)
   const [timeSlice, setTimeSlice] = useState<{start: string, end: string} | null>(null)
+  const [sourcePanelOpen, setSourcePanelOpen] = useState(false)
 
   const loadData = useCallback(async (
     currentTimeRange: TimeRange = timeRange, 
@@ -298,6 +300,7 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
           value={`${stats?.by_source ? Object.keys(stats.by_source).length : 0} / 4`}
           subValue="Ingestion: 1.2 MB/s"
           statusColor={(stats?.by_source && Object.keys(stats.by_source).length < 4) ? 'warning' : 'normal'}
+          onClick={() => setSourcePanelOpen(true)}
         />
       </div>
 
@@ -363,6 +366,9 @@ export default function Dashboard({ realtimeEvents }: DashboardProps) {
           )
         }}
       />
+
+      {/* Sources Detail Panel */}
+      <SourcesPanel isOpen={sourcePanelOpen} onClose={() => setSourcePanelOpen(false)} />
     </div>
   )
 }

@@ -8,8 +8,12 @@ import time
 import random
 import datetime
 import os
+import threading
+import requests
 
 LOG_FILE = "/var/log/firewall/iptables.log"
+BACKEND_URL = os.environ.get('BACKEND_URL', 'http://soc-backend:5000')
+SITE_ID     = os.environ.get('SITE_ID', 'firewall-gw')
 
 # Simulated attacker IPs (external/DMZ side)
 EXTERNAL_IPS = [
@@ -62,8 +66,26 @@ def write_log(line):
     print(line, flush=True)
 
 
+def _heartbeat():
+    """Send a keepalive to the SOC backend every 5 minutes."""
+    while True:
+        time.sleep(300)
+        try:
+            requests.post(f"{BACKEND_URL}/api/ingest", json={
+                "source": "firewall",
+                "event_type": "keepalive",
+                "severity": "low",
+                "description": f"Agent keepalive from {SITE_ID}",
+                "site_id": SITE_ID,
+                "metadata": {}
+            }, timeout=5)
+        except Exception:
+            pass
+
+
 def main():
     print(f"[log-generator] Writing iptables logs to {LOG_FILE}", flush=True)
+    threading.Thread(target=_heartbeat, daemon=True).start()
     while True:
         # ~70% chance of a dropped packet event
         if random.random() < 0.7:

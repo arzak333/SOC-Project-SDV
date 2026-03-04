@@ -7,7 +7,7 @@
 - Validates format, source, and severity
 - Sanitizes raw logs to prevent injection
 - Stores in PostgreSQL
-- Broadcasts to WebSocket clients on ingestion
+- Broadcasts to WebSocket clients on ingestion — `event_type="keepalive"` heartbeats are stored but suppressed from broadcast to avoid flooding the realtime feed
 
 ### 2. REST API (Flask)
 - `GET /api/events` - List events with filters (status, severity, source, site_id, search)
@@ -15,6 +15,9 @@
 - `PATCH /api/events/:id/status` - Update event status and assignment
 - `GET /api/dashboard/stats` - Dashboard statistics (counts by status/severity/source)
 - `GET /api/dashboard/trends` - 7-day trends (hourly and daily)
+- `GET /api/dashboard/heatmap` - Event density by date × hour (last N days, with severity breakdown)
+- `GET /api/dashboard/top-ips` - Top 10 source IPs by event count (JSONB metadata query)
+- `GET /api/dashboard/source-details` - Per-source live stats: last signal, keepalive, EPS, 24h count, top event type, active sites; GLPI health via real-time HTTP check
 - `GET /api/dashboard/sites` - Summary by site (endpoint-pc-01, endpoint-pc-02, firewall-gw)
 - `GET /api/incidents` - List incidents (filter by severity, status, assigned_to; paginated)
 - `GET /api/incidents/:id` - Get incident + up to 100 linked events
@@ -26,6 +29,7 @@
 - Pushes alert notifications in real-time (`alert`)
 - Room-based subscriptions (by site, by severity)
 - Connection status tracking
+- Keepalive heartbeats (`event_type="keepalive"`) are excluded from all broadcasts
 
 ### 4. Alert Engine + Correlation (Celery + Redis)
 - Evaluates rules every 10 seconds
