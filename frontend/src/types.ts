@@ -100,8 +100,24 @@ export interface GLPIAsset {
   date_creation: string
   date_mod: string
   entities_id: string
-  states_id: number
+  locations_id: string | number | null
+  states_id: number | string
   is_deleted: number
+}
+
+export type OsPlatform = 'windows' | 'macos' | 'linux'
+export type AssetStatus = 'online' | 'offline' | 'degraded'
+
+export interface EnrichedAsset extends GLPIAsset {
+  os: string
+  osPlatform: OsPlatform
+  siteId: string
+  ip: string
+  dept: string
+  vulnScore: number
+  status: AssetStatus
+  criticalAlerts: number
+  highAlerts: number
 }
 
 // Endpoint/Center types
@@ -111,14 +127,20 @@ export interface Endpoint {
   id: string
   site_id: string
   name: string
-  location: string
-  ip_address: string
   status: EndpointStatus
-  health: number // 0-100
-  last_seen: string
+  last_seen: string | null
   event_count_24h: number
   critical_alerts: number
-  type: 'center' | 'server' | 'workstation'
+  critical_open?: number
+  high_open?: number
+  medium_open?: number
+  low_open?: number
+  total_events?: number
+  type: string
+  // legacy fields (not returned by current API)
+  location?: string
+  ip_address?: string
+  health?: number
 }
 
 // Comment/Note type for alerts

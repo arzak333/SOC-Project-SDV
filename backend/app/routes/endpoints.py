@@ -38,13 +38,20 @@ def list_endpoints():
             Event.event_type != 'keepalive',
         ).scalar() or 0
 
-        # Critical/high alerts still open (keepalives excluded)
-        critical_alerts = db.session.query(func.count(Event.id)).filter(
-            Event.site_id == site_id,
-            Event.severity.in_([EventSeverity.CRITICAL, EventSeverity.HIGH]),
-            Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
-            Event.event_type != 'keepalive',
-        ).scalar() or 0
+        # Per-severity open alert counts
+        def _count_sev(sev):
+            return db.session.query(func.count(Event.id)).filter(
+                Event.site_id == site_id,
+                Event.severity == sev,
+                Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
+                Event.event_type != 'keepalive',
+            ).scalar() or 0
+
+        critical_open = _count_sev(EventSeverity.CRITICAL)
+        high_open     = _count_sev(EventSeverity.HIGH)
+        medium_open   = _count_sev(EventSeverity.MEDIUM)
+        low_open      = _count_sev(EventSeverity.LOW)
+        critical_alerts = critical_open + high_open  # kept for backwards compat
 
         # Derive status from recency
         if last_seen and (now - last_seen) < timedelta(hours=1):
@@ -59,9 +66,13 @@ def list_endpoints():
             'site_id': site_id,
             'name': site_id,
             'status': ep_status,
-            'last_seen': last_seen.isoformat() if last_seen else None,
+            'last_seen': last_seen.isoformat() + 'Z' if last_seen else None,
             'event_count_24h': events_24h,
             'critical_alerts': critical_alerts,
+            'critical_open': critical_open,
+            'high_open': high_open,
+            'medium_open': medium_open,
+            'low_open': low_open,
             'total_events': total_events,
             'type': 'endpoint',
         }

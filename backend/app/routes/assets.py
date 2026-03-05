@@ -7,7 +7,7 @@ assets_bp = Blueprint('assets', __name__)
 @assets_bp.route('/assets', methods=['GET'])
 def list_assets():
     """List computers from GLPI."""
-    computers = glpi_client.get_computers()
+    computers = glpi_client.get_computers(limit=500)
     return jsonify({
         'assets': computers,
         'total': len(computers),
