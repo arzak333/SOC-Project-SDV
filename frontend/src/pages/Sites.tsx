@@ -114,7 +114,12 @@ function SevPill({ count, label, cls }: { count: number; label: string; cls: str
 }
 
 function isSourceActive(s: SourceDetail) {
-  if (s.last_keepalive_at) return (Date.now() - new Date(s.last_keepalive_at).getTime()) < 10 * 60 * 1000
+  // Keepalive within 10 min → definitely active
+  if (s.last_keepalive_at) {
+    const age = Date.now() - new Date(s.last_keepalive_at).getTime()
+    if (age < 10 * 60 * 1000) return true
+  }
+  // Fallback: recent security events mean the source is alive
   return s.events_24h > 0
 }
 
@@ -158,11 +163,12 @@ const OS_FILTERS = [['all', 'All OS'], ['windows', 'Windows'], ['macos', 'macOS'
 export default function Sites() {
   const { connected } = useSocket()
 
-  const [assets,    setAssets]    = useState<GLPIAsset[]>([])
-  const [siteMap,   setSiteMap]   = useState<Map<string, SiteSummary>>(new Map())
-  const [sources,   setSources]   = useState<Record<string, SourceDetail>>({})
-  const [endpoints, setEndpoints] = useState<Endpoint[]>([])
-  const [loading,   setLoading]   = useState(true)
+  const [assets,           setAssets]           = useState<GLPIAsset[]>([])
+  const [siteMap,          setSiteMap]          = useState<Map<string, SiteSummary>>(new Map())
+  const [sources,          setSources]          = useState<Record<string, SourceDetail>>({})
+  const [endpoints,        setEndpoints]        = useState<Endpoint[]>([])
+  const [endpointsLoading, setEndpointsLoading] = useState(true)
+  const [assetsLoading,    setAssetsLoading]    = useState(true)
 
   const [search,  setSearch]  = useState('')
   const [statusF, setStatusF] = useState('all')
@@ -172,19 +178,24 @@ export default function Sites() {
   const [panelOpen, setPanelOpen] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      fetchAssets(),
-      fetchSitesSummary(),
-      fetchSourceDetails(),
-      fetchEndpoints(),
-    ]).then(([assetsData, sitesData, sourcesData, endpointsData]) => {
-      setAssets(assetsData.assets)
-      const m = new Map<string, SiteSummary>()
-      for (const s of sitesData.sites) m.set(s.site_id, s)
-      setSiteMap(m)
-      setSources(sourcesData.sources)
-      setEndpoints(endpointsData.endpoints)
-    }).catch(console.error).finally(() => setLoading(false))
+    // Chain 1: fast DB-only calls — Section 1 (Monitored Sites) loads first
+    Promise.all([fetchSitesSummary(), fetchSourceDetails(), fetchEndpoints()])
+      .then(([sitesData, sourcesData, endpointsData]) => {
+        const m = new Map<string, SiteSummary>()
+        for (const s of sitesData.sites) m.set(s.site_id, s)
+        setSiteMap(m)
+        setSources(sourcesData.sources)
+        setEndpoints(endpointsData.endpoints)
+      })
+      .catch(console.error)
+      .finally(() => setEndpointsLoading(false))
+
+    // Chain 2: GLPI call — Section 2 (Asset Inventory) loads independently
+    // Client cache makes this instant on second+ visit (no spinner)
+    fetchAssets()
+      .then(data => setAssets(data.assets))
+      .catch(console.error)
+      .finally(() => setAssetsLoading(false))
   }, [])
 
   const enriched = useMemo(() => enrichAssets(assets, siteMap), [assets, siteMap])
@@ -234,7 +245,7 @@ export default function Sites() {
           </span>
         </div>
 
-        {loading ? (
+        {endpointsLoading ? (
           <div className="glass-card p-6 flex items-center justify-center">
             <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500" />
           </div>
@@ -350,7 +361,7 @@ export default function Sites() {
           <span className="text-sm text-slate-500 ml-auto">{filtered.length} results</span>
         </div>
 
-        {loading ? (
+        {assetsLoading ? (
           <div className="flex items-center justify-center h-48">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
           </div>

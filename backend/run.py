@@ -10,4 +10,10 @@ if __name__ == "__main__":
 
     apply_migrations()
 
-    socketio.run(app, host="0.0.0.0", port=5000, debug=app.config["DEBUG"])
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=5000,
+        debug=app.config["DEBUG"],
+        allow_unsafe_werkzeug=True,  # enables threaded Werkzeug dev server
+    )

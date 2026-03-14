@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
-from sqlalchemy import func
+from sqlalchemy import func, case
 
 from app import db
 from app.models import Event, EventSeverity, EventStatus
@@ -29,31 +29,43 @@ def list_endpoints():
         Event.event_type != 'keepalive',
     ).group_by(Event.site_id).all()
 
+    site_ids = [row[0] for row in sites]
+
+    # Batch query 1: events in last 24h per site (one query instead of N)
+    events_24h_rows = db.session.query(
+        Event.site_id,
+        func.count(Event.id).label('count'),
+    ).filter(
+        Event.site_id.in_(site_ids),
+        Event.timestamp >= day_ago,
+        Event.event_type != 'keepalive',
+    ).group_by(Event.site_id).all()
+    events_24h_map = {r.site_id: r.count for r in events_24h_rows}
+
+    # Batch query 2: per-severity open counts per site (one query instead of 4N)
+    sev_rows = db.session.query(
+        Event.site_id,
+        func.sum(case((Event.severity == EventSeverity.CRITICAL, 1), else_=0)).label('critical'),
+        func.sum(case((Event.severity == EventSeverity.HIGH,     1), else_=0)).label('high'),
+        func.sum(case((Event.severity == EventSeverity.MEDIUM,   1), else_=0)).label('medium'),
+        func.sum(case((Event.severity == EventSeverity.LOW,      1), else_=0)).label('low'),
+    ).filter(
+        Event.site_id.in_(site_ids),
+        Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
+        Event.event_type != 'keepalive',
+    ).group_by(Event.site_id).all()
+    sev_map = {r.site_id: r for r in sev_rows}
+
     endpoints = []
     for site_id, total_events, last_seen in sites:
-        # Events in last 24h (keepalives excluded)
-        events_24h = db.session.query(func.count(Event.id)).filter(
-            Event.site_id == site_id,
-            Event.timestamp >= day_ago,
-            Event.event_type != 'keepalive',
-        ).scalar() or 0
+        events_24h   = events_24h_map.get(site_id, 0)
+        sev          = sev_map.get(site_id)
+        critical_open = int(sev.critical or 0) if sev else 0
+        high_open     = int(sev.high     or 0) if sev else 0
+        medium_open   = int(sev.medium   or 0) if sev else 0
+        low_open      = int(sev.low      or 0) if sev else 0
+        critical_alerts = critical_open + high_open
 
-        # Per-severity open alert counts
-        def _count_sev(sev):
-            return db.session.query(func.count(Event.id)).filter(
-                Event.site_id == site_id,
-                Event.severity == sev,
-                Event.status.in_([EventStatus.NEW, EventStatus.INVESTIGATING]),
-                Event.event_type != 'keepalive',
-            ).scalar() or 0
-
-        critical_open = _count_sev(EventSeverity.CRITICAL)
-        high_open     = _count_sev(EventSeverity.HIGH)
-        medium_open   = _count_sev(EventSeverity.MEDIUM)
-        low_open      = _count_sev(EventSeverity.LOW)
-        critical_alerts = critical_open + high_open  # kept for backwards compat
-
-        # Derive status from recency
         if last_seen and (now - last_seen) < timedelta(hours=1):
             ep_status = 'online'
         elif last_seen and (now - last_seen) < timedelta(hours=24):

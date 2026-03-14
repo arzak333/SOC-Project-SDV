@@ -1,6 +1,21 @@
 import axios from 'axios'
 import { SecurityEvent, AlertRule, DashboardStats, SiteSummary, Endpoint, AlertComment, Analyst, Playbook, PlaybookExecution, GLPIAsset, Incident, HeatmapEntry, TopIP, SourceDetail } from './types'
 
+// ── Module-level client cache ─────────────────────────────────────────────────
+// Survives React component unmounts — data persists for the lifetime of the SPA
+// session. Navigating away and back returns cached data instantly (no spinner).
+interface _CacheEntry<T> { data: T; ts: number; ttl: number }
+const _cache = new Map<string, _CacheEntry<unknown>>()
+
+function _cached<T>(key: string, ttl: number, fetcher: () => Promise<T>): Promise<T> {
+  const entry = _cache.get(key) as _CacheEntry<T> | undefined
+  if (entry && Date.now() - entry.ts < entry.ttl) return Promise.resolve(entry.data)
+  return fetcher().then(data => {
+    _cache.set(key, { data, ts: Date.now(), ttl })
+    return data
+  })
+}
+
 const api = axios.create({
   baseURL: '/api',
   headers: {
@@ -116,10 +131,9 @@ export async function fetchAnalysts(): Promise<{ analysts: Analyst[] }> {
   return data
 }
 
-// Assets (GLPI)
-export async function fetchAssets(): Promise<{ assets: GLPIAsset[]; total: number }> {
-  const { data } = await api.get('/assets')
-  return data
+// Assets (GLPI) — cached 5 min client-side (matches server cache TTL)
+export function fetchAssets(): Promise<{ assets: GLPIAsset[]; total: number }> {
+  return _cached('assets', 5 * 60 * 1000, () => api.get('/assets').then(r => r.data))
 }
 
 export async function fetchAssetByName(name: string): Promise<Record<string, unknown>> {
@@ -152,9 +166,9 @@ export async function fetchTopIPs(hours?: number): Promise<{ top_ips: TopIP[] }>
   return data
 }
 
-export async function fetchSourceDetails(): Promise<{ sources: Record<string, SourceDetail> }> {
-  const { data } = await api.get('/dashboard/source-details')
-  return data
+// Source details — cached 30 s client-side (matches server GLPI probe cache TTL)
+export function fetchSourceDetails(): Promise<{ sources: Record<string, SourceDetail> }> {
+  return _cached('source-details', 30 * 1000, () => api.get('/dashboard/source-details').then(r => r.data))
 }
 
 // ============== INCIDENTS ==============

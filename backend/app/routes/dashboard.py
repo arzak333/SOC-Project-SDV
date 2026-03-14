@@ -16,6 +16,36 @@ from app.models import (
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
+# ── GLPI reachability cache ────────────────────────────────────────────────────
+# Cached so the blocking HTTP call only runs once every 30 s, not on every request.
+_glpi_cache: dict = {"alive": False, "checked_at": None}
+_GLPI_CACHE_TTL = 30  # seconds
+
+
+def _glpi_alive() -> bool:
+    """Return True if GLPI is reachable, using a 30-second TTL cache."""
+    now = datetime.utcnow()
+    if _glpi_cache["checked_at"] is not None:
+        age = (now - _glpi_cache["checked_at"]).total_seconds()
+        if age < _GLPI_CACHE_TTL:
+            return _glpi_cache["alive"]
+    # Probe GLPI
+    alive = False
+    try:
+        glpi_url = os.environ.get("GLPI_URL", "http://glpi-crm/apirest.php")
+        app_token = os.environ.get("GLPI_APP_TOKEN", "")
+        resp = http_requests.get(
+            f"{glpi_url}/initSession",
+            headers={"App-Token": app_token},
+            timeout=2,  # short timeout — cached result used most of the time
+        )
+        alive = resp.status_code < 500
+    except Exception:
+        alive = False
+    _glpi_cache["alive"] = alive
+    _glpi_cache["checked_at"] = now
+    return alive
+
 
 @dashboard_bp.route("/dashboard/stats", methods=["GET"])
 def get_stats():
@@ -341,19 +371,8 @@ def get_source_details():
         EventSource.APPLICATION,
     ]
 
-    # GLPI reachability check (done once, used for application source)
-    glpi_alive = False
-    try:
-        glpi_url = os.environ.get("GLPI_URL", "http://glpi-crm/apirest.php")
-        app_token = os.environ.get("GLPI_APP_TOKEN", "")
-        resp = http_requests.get(
-            f"{glpi_url}/initSession",
-            headers={"App-Token": app_token},
-            timeout=3,
-        )
-        glpi_alive = resp.status_code < 500  # 401 = auth needed but GLPI is up
-    except Exception:
-        glpi_alive = False
+    # GLPI reachability check — uses 30-second cache to avoid blocking on every request
+    glpi_alive = _glpi_alive()
 
     result = {}
     for src in active_sources:
