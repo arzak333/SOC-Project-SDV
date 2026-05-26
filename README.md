@@ -9,7 +9,6 @@ Plateforme de démonstration d'un SOC (Security Operations Center) externalisé 
 | **Client** | Réseau de ~30 centres d'audioprothésistes en France, sans équipe sécurité interne |
 | **Besoin** | Supervision centralisée de la sécurité informatique de l'ensemble des points de vente |
 | **Solution** | SOC externalisé avec collecte multi-source (firewall, endpoints, GLPI), détection en temps réel via Wazuh SIEM, corrélation d'événements et réponse automatisée |
-| **Projet** | Projet de fin d'année - M2 Cybersécurité, SDV Sup de Vinci (2026) |
 
 ## Architecture
 
